@@ -10,7 +10,15 @@ import junit.framework.TestSuite;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 import java.util.SortedSet;
+
+import org.theseed.counters.CountMap;
+import org.theseed.io.TabbedLineReader;
 
 /**
  * Unit test for minhash stuff.
@@ -108,6 +116,49 @@ public class SeqTest extends TestCase {
                 }
             }
         }
+    }
+
+    /**
+     * test sequence hashing using protein families
+     * @throws IOException
+     */
+    public void testProtFamilies() throws IOException {
+        // Create the hash.
+        LSHSeqHash seqHash = new LSHSeqHash(256, 20, 50, 1201939);
+        // This will hold the sample sequence for each family.
+        Map<String, ProteinKmers> sampleHash = new HashMap<String, ProteinKmers>(100);
+        // This will count the members of each family.
+        CountMap<String> famCounts = new CountMap<String>();
+        // Read in the protein families.
+        File pfamFile = new File("src/test", "prot.fams.tbl");
+        try (TabbedLineReader pfamStream = new TabbedLineReader(pfamFile)) {
+            for (TabbedLineReader.Line line : pfamStream) {
+                String family = line.get(0);
+                ProteinKmers prot = new ProteinKmers(line.get(3));
+                if (! sampleHash.containsKey(family))
+                    sampleHash.put(family, prot);
+                else {
+                    seqHash.add(prot, family);
+                    famCounts.count(family);
+                }
+            }
+        }
+        // Now test the samples.  Note only families with members (other than the sample)
+        // will have been counted.
+        int matches = 0;
+        int fails = 0;
+        for (CountMap<String>.Count famCount : famCounts.sortedCounts()) {
+            String family = famCount.getKey();
+            int count = famCount.getCount();
+            Set<LSHSeqHash.Result> results = seqHash.getClosest(sampleHash.get(family), 10, 0.80);
+            System.err.format("Family %s with size %d returned %d matches.%n", family, count, results.size());
+            if (results.isEmpty()) fails++;
+            for (LSHSeqHash.Result result : results) {
+                assertThat(family, result.getTarget(), equalTo(family));
+                matches++;
+            }
+        }
+        System.err.format("%d matches found with %d failures.%n", matches, fails);
     }
 
 
