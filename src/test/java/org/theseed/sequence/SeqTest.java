@@ -13,6 +13,7 @@ import static org.hamcrest.Matchers.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
@@ -159,6 +160,19 @@ public class SeqTest extends TestCase {
             }
         }
         System.err.format("%d matches found with %d failures.%n", matches, fails);
+    }
+
+    /**
+     * test random seed generation
+     */
+    public void testSeeding() {
+        Set<Long> seedHash = new HashSet<Long>();
+        for (int i = 0; i < 10; i++) {
+            long seed = LSHSeqHash.randomSeed();
+            assertThat(seed, greaterThan(0L));
+            assertFalse(seedHash.contains(seed));
+            seedHash.add(seed);
+        }
     }
 
 

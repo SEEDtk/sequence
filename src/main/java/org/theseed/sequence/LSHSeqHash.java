@@ -230,6 +230,12 @@ public class LSHSeqHash extends LSH {
         this.minHasher = new MinHash(w, SequenceKmers.DICT_SIZE, seed);
     }
 
+    /**
+     * @return a random number for use as a seed.
+     */
+    public static long randomSeed() {
+        return (System.currentTimeMillis() % LSH.LARGE_PRIME) * 13 + 1;
+    }
 
     /**
      * @return the distance between two sketches
