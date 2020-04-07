@@ -38,10 +38,5 @@
         <artifactId>logback-classic</artifactId>
         <version>${logback.version}</version>
     </dependency>
-    <dependency>
-        <groupId>info.debatty</groupId>
-        <artifactId>java-lsh</artifactId>
-        <version>0.10</version>
-    </dependency>
 </dependencies>
 </project>

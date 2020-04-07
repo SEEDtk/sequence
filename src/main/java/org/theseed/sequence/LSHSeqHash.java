@@ -9,9 +9,6 @@ import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-import info.debatty.java.lsh.LSH;
-import info.debatty.java.lsh.MinHash;
-
 /**
  * This is a locality-sensitive hash that maps sequences to strings using a Mash/MinHash approach.  The sequence
  * is converted into a sketch using the Mash algorithm.  Each sketch is converted into an array of bucket numbers.
@@ -22,12 +19,10 @@ import info.debatty.java.lsh.MinHash;
  * @author Bruce Parrello
  *
  */
-public class LSHSeqHash extends LSH {
+public class LSHSeqHash  {
 
-    /**
-     * serialization class ID
-     */
-    private static final long serialVersionUID = -4410879652283658775L;
+    /** large prime number for hashing */
+    protected static final long LARGE_PRIME =  433494437;
 
     /**
      * This subclass contains a sequence key and its connected object.
@@ -55,7 +50,7 @@ public class LSHSeqHash extends LSH {
          * @param otherSketch	sketch of the other sequence
          */
         public double distance(int[] otherSketch) {
-            return LSHSeqHash.this.sketchDistance(this.sketch, otherSketch);
+            return SequenceKmers.signatureDistance(this.sketch, otherSketch);
         }
 
         /**
@@ -205,11 +200,14 @@ public class LSHSeqHash extends LSH {
     /** number of objects stored */
     private int size;
 
+    /** width of each signature */
+    private int width;
+
+    /** number of buckets per stage */
+    private int buckets;
+
     /** master hash table (first index is stage, second is bucket */
     private Bucket[][] masterTable;
-
-    /** minhash object for creating sketches */
-    private MinHash minHasher;
 
     /**
      * Construct a blank, empty sequence hash.
@@ -217,24 +215,16 @@ public class LSHSeqHash extends LSH {
      * @param w		width of signatures
      * @param s		number of stages
      * @param b		number of buckets
-     * @param seed	random number seed
      */
-    public LSHSeqHash(int w, int s, int b, long seed) {
-        super(s, b);
+    public LSHSeqHash(int w, int s, int b) {
         this.stages = s;
         this.size = 0;
         this.masterTable = new Bucket[s][b];
         for (int si = 0; si < s; si++)
             for (int bi = 0; bi < b; bi++)
                 this.masterTable[si][bi] = new Bucket();
-        this.minHasher = new MinHash(w, SequenceKmers.DICT_SIZE, seed);
-    }
-
-    /**
-     * @return a random number for use as a seed.
-     */
-    public static long randomSeed() {
-        return (System.currentTimeMillis() % LSH.LARGE_PRIME) * 13 + 1;
+        this.width = w;
+        this.buckets = b;
     }
 
     /**
@@ -244,7 +234,7 @@ public class LSHSeqHash extends LSH {
      * @param otherSketch	second sketch
      */
     protected double sketchDistance(int[] sketch, int[] otherSketch) {
-        return 1.0 - minHasher.similarity(sketch, otherSketch);
+        return SequenceKmers.signatureDistance(sketch, otherSketch);
     }
 
     /**
@@ -254,8 +244,8 @@ public class LSHSeqHash extends LSH {
      * @param other		kmers for the second sequence
      */
     public double testSketches(SequenceKmers kmers, SequenceKmers other) {
-        int[] sketch = this.minHasher.signature(kmers.hashSet());
-        int[] otherSketch = this.minHasher.signature(other.hashSet());
+        int[] sketch = kmers.hashSet(this.width);
+        int[] otherSketch = other.hashSet(this.width);
         return sketchDistance(sketch, otherSketch);
     }
 
@@ -267,7 +257,7 @@ public class LSHSeqHash extends LSH {
      */
     public void add(SequenceKmers seqKmers, String target) {
         // Compute the sketch and the bucket array for the new sequence.
-        int[] sketch = this.minHasher.signature(seqKmers.hashSet());
+        int[] sketch = seqKmers.hashSet(this.width);
         int[] buckets = this.hashSignature(sketch);
         // Place this target in the appropriate buckets.
         Entry entry = new Entry(sketch, target);
@@ -276,6 +266,33 @@ public class LSHSeqHash extends LSH {
         // Record the new entry.
         this.size++;
     }
+
+    /**
+     * Hash a signature.
+     * The signature is divided in s stages (or bands). Each stage is hashed to
+     * one of the b buckets.
+     * @param signature
+     * @return a vector of s integers (between 0 and b-1)
+     */
+    public int[] hashSignature(final int[] signature) {
+
+        // Create an accumulator for each stage
+        int[] hash = new int[stages];
+
+        // Number of signature elements per stage
+        int rows = Math.max(1, signature.length / stages);
+
+        for (int i = 0; i < signature.length; i++) {
+            int stage = Math.min(i / rows, stages - 1);
+            hash[stage] = (int)
+                    ((hash[stage] + (long) signature[i] * LARGE_PRIME)
+                    % buckets);
+
+        }
+
+        return hash;
+    }
+
 
     /**
      * Search for the N closest sequences to an input sequence
@@ -290,7 +307,7 @@ public class LSHSeqHash extends LSH {
             double maxDist) {
         SortedSet<Result> retVal = new TreeSet<Result>();
         // Compute the sketch and the bucket array for the search sequence.
-        int[] sketch = this.minHasher.signature(seqKmers.hashSet());
+        int[] sketch =seqKmers.hashSet(this.width);
         int[] buckets = this.hashSignature(sketch);
         // Check each bucket for close sequences.
         for (int i = 0; i < this.stages; i++) {

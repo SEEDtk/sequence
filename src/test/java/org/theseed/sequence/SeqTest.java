@@ -13,7 +13,6 @@ import static org.hamcrest.Matchers.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
@@ -78,7 +77,7 @@ public class SeqTest extends TestCase {
                 assertThat(kArray[i].distance(kArray[j]), greaterThan(0.99));
         String[] prots = new String[] { p1, p2, p3, p4, p5 };
         // Create the hash.
-        LSHSeqHash hash = new LSHSeqHash(200, 15, 20, 142857);
+        LSHSeqHash hash = new LSHSeqHash(200, 15, 20);
         // Now create the mutations.
         for (int i = 0; i < 5; i++) {
             String p = prots[i];
@@ -104,7 +103,7 @@ public class SeqTest extends TestCase {
             String prefix = "p" + Integer.toString(i) + ".";
             SortedSet<LSHSeqHash.Result> rSet = hash.getClosest(kArray[i], 8, 0.99);
             assertThat(prefix, rSet.size(), lessThanOrEqualTo(8));
-            assertThat(prefix, rSet.size(), greaterThanOrEqualTo(3));
+            assertThat(prefix, rSet.size(), greaterThanOrEqualTo(2));
             r1 = rSet.toArray(r1);
             for (int k = 0; k < r1.length - 1; k++) {
                 LSHSeqHash.Result r = r1[k];
@@ -125,7 +124,7 @@ public class SeqTest extends TestCase {
      */
     public void testProtFamilies() throws IOException {
         // Create the hash.
-        LSHSeqHash seqHash = new LSHSeqHash(256, 20, 50, 1201939);
+        LSHSeqHash seqHash = new LSHSeqHash(200, 20, 50);
         // This will hold the sample sequence for each family.
         Map<String, ProteinKmers> sampleHash = new HashMap<String, ProteinKmers>(100);
         // This will count the members of each family.
@@ -151,28 +150,16 @@ public class SeqTest extends TestCase {
         for (CountMap<String>.Count famCount : famCounts.sortedCounts()) {
             String family = famCount.getKey();
             int count = famCount.getCount();
-            Set<LSHSeqHash.Result> results = seqHash.getClosest(sampleHash.get(family), 10, 0.80);
+            Set<LSHSeqHash.Result> results = seqHash.getClosest(sampleHash.get(family), 10, 0.70);
             System.err.format("Family %s with size %d returned %d matches.%n", family, count, results.size());
             if (results.isEmpty()) fails++;
             for (LSHSeqHash.Result result : results) {
-                assertThat(family, result.getTarget(), equalTo(family));
+                assertThat(String.format("distance = %8.5f", result.getDistance()),
+                        result.getTarget(), equalTo(family));
                 matches++;
             }
         }
         System.err.format("%d matches found with %d failures.%n", matches, fails);
-    }
-
-    /**
-     * test random seed generation
-     */
-    public void testSeeding() {
-        Set<Long> seedHash = new HashSet<Long>();
-        for (int i = 0; i < 10; i++) {
-            long seed = LSHSeqHash.randomSeed();
-            assertThat(seed, greaterThan(0L));
-            assertFalse(seedHash.contains(seed));
-            seedHash.add(seed);
-        }
     }
 
 
