@@ -124,7 +124,7 @@ public class SeqTest extends TestCase {
      */
     public void testProtFamilies() throws IOException {
         // Create the hash.
-        LSHSeqHash seqHash = new LSHSeqHash(200, 20, 50);
+        LSHSeqHash seqHash = new LSHSeqHash(250, 50, 100);
         // This will hold the sample sequence for each family.
         Map<String, ProteinKmers> sampleHash = new HashMap<String, ProteinKmers>(100);
         // This will count the members of each family.
@@ -147,10 +147,12 @@ public class SeqTest extends TestCase {
         // will have been counted.
         int matches = 0;
         int fails = 0;
+        int tries = 0;
         for (CountMap<String>.Count famCount : famCounts.sortedCounts()) {
             String family = famCount.getKey();
             int count = famCount.getCount();
-            Set<LSHSeqHash.Result> results = seqHash.getClosest(sampleHash.get(family), 10, 0.70);
+            Set<LSHSeqHash.Result> results = seqHash.getClosest(sampleHash.get(family), 10, 0.74);
+            tries++;
             System.err.format("Family %s with size %d returned %d matches.%n", family, count, results.size());
             if (results.isEmpty()) fails++;
             for (LSHSeqHash.Result result : results) {
@@ -159,7 +161,7 @@ public class SeqTest extends TestCase {
                 matches++;
             }
         }
-        System.err.format("%d matches found with %d failures.%n", matches, fails);
+        System.err.format("%d matches found with %d failures out of %d tries.%n", matches, fails, tries);
     }
 
 
