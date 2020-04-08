@@ -18,6 +18,7 @@ import java.util.Set;
 import java.util.SortedSet;
 
 import org.theseed.counters.CountMap;
+import org.theseed.counters.QualityCountMap;
 import org.theseed.io.TabbedLineReader;
 
 /**
@@ -89,7 +90,7 @@ public class SeqTest extends TestCase {
                 for (int k = mutations; k < limit; k++)
                     p = mutate(p, jumble[k]);
                 mutations = limit;
-                String label = String.format("p%d.%04d", i, mutations);
+                String label = String.format("p%d", i);
                 ProteinKmers kmers = new ProteinKmers(p);
                 double dist = kmers.distance(kArray[i]);
                 double skDist = hash.testSketches(kmers, kArray[i]);
@@ -99,23 +100,29 @@ public class SeqTest extends TestCase {
         }
         // Get the closest 5 to each original protein.
         for (int i = 0; i < 5; i++) {
-            LSHSeqHash.Result[] r1 = new LSHSeqHash.Result[8];
-            String prefix = "p" + Integer.toString(i) + ".";
-            SortedSet<LSHSeqHash.Result> rSet = hash.getClosest(kArray[i], 8, 0.99);
+            Bucket.Result[] r1 = new Bucket.Result[8];
+            String prefix = "p" + Integer.toString(i);
+            SortedSet<Bucket.Result> rSet = hash.getClosest(kArray[i], 8, 0.99);
             assertThat(prefix, rSet.size(), lessThanOrEqualTo(8));
             assertThat(prefix, rSet.size(), greaterThanOrEqualTo(2));
             r1 = rSet.toArray(r1);
             for (int k = 0; k < r1.length - 1; k++) {
-                LSHSeqHash.Result r = r1[k];
+                Bucket.Result r = r1[k];
                 if (r != null) {
-                    LSHSeqHash.Result r0 = r1[k+1];
+                    Bucket.Result r0 = r1[k+1];
                     if (r0 != null)
                         assertThat(r.getDistance(), lessThanOrEqualTo(r0.getDistance()));
                     assertThat(r.getDistance(), lessThanOrEqualTo(0.99));
-                    assertThat(r.getTarget().substring(0, 3), equalTo(prefix));
+                    assertThat(r.getTarget(), equalTo(prefix));
                 }
             }
         }
+        // Compute the quality.
+        QualityCountMap<String> quality = hash.quality();
+        SortedSet<String> names = quality.keys();
+        assertThat(names.size(), equalTo(5));
+        for (String name : names)
+            assertThat(quality.fractionGood(name), closeTo(1.0, 0.001));
     }
 
     /**
@@ -124,7 +131,7 @@ public class SeqTest extends TestCase {
      */
     public void testProtFamilies() throws IOException {
         // Create the hash.
-        LSHSeqHash seqHash = new LSHSeqHash(250, 50, 100);
+        LSHSeqHash seqHash = new LSHSeqHash(250, 25, 100);
         // This will hold the sample sequence for each family.
         Map<String, ProteinKmers> sampleHash = new HashMap<String, ProteinKmers>(100);
         // This will count the members of each family.
@@ -133,35 +140,32 @@ public class SeqTest extends TestCase {
         File pfamFile = new File("src/test", "prot.fams.tbl");
         try (TabbedLineReader pfamStream = new TabbedLineReader(pfamFile)) {
             for (TabbedLineReader.Line line : pfamStream) {
-                String family = line.get(0);
+                String family = line.get(1);
                 ProteinKmers prot = new ProteinKmers(line.get(3));
                 if (! sampleHash.containsKey(family))
                     sampleHash.put(family, prot);
                 else {
-                    seqHash.add(prot, family);
-                    famCounts.count(family);
+                    double dist = prot.distance(sampleHash.get(family));
+                    if (dist < 0.95) {
+                        seqHash.add(prot, family);
+                        famCounts.count(family);
+                    }
                 }
             }
         }
         // Now test the samples.  Note only families with members (other than the sample)
         // will have been counted.
-        int matches = 0;
-        int fails = 0;
-        int tries = 0;
         for (CountMap<String>.Count famCount : famCounts.sortedCounts()) {
             String family = famCount.getKey();
-            int count = famCount.getCount();
-            Set<LSHSeqHash.Result> results = seqHash.getClosest(sampleHash.get(family), 10, 0.74);
-            tries++;
-            System.err.format("Family %s with size %d returned %d matches.%n", family, count, results.size());
-            if (results.isEmpty()) fails++;
-            for (LSHSeqHash.Result result : results) {
+            Set<Bucket.Result> results = seqHash.getClosest(sampleHash.get(family), 10, 0.95);
+            if (results.isEmpty()) {
+                assertThat(family, famCount.getCount(), lessThan(10));
+            }
+            for (Bucket.Result result : results) {
                 assertThat(String.format("distance = %8.5f", result.getDistance()),
                         result.getTarget(), equalTo(family));
-                matches++;
             }
         }
-        System.err.format("%d matches found with %d failures out of %d tries.%n", matches, fails, tries);
     }
 
 
