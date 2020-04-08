@@ -38,9 +38,6 @@ public class LSHSeqHash  {
     /** number of buckets per stage */
     private int buckets;
 
-    /** next available ID number */
-    private int nextIdNum;
-
     /** master hash table (first index is stage, second is bucket */
     private Bucket[][] masterTable;
 
@@ -60,7 +57,6 @@ public class LSHSeqHash  {
                 this.masterTable[si][bi] = new Bucket();
         this.width = w;
         this.buckets = b;
-        this.nextIdNum = 0;
     }
 
     /**
@@ -96,7 +92,7 @@ public class LSHSeqHash  {
         int[] signature = seqKmers.hashSet(this.width);
         int[] buckets = this.hashSignature(signature);
         // Place this target in the appropriate buckets.
-        Sketch entry = new Sketch(signature, target, this.nextIdNum++);
+        Sketch entry = new Sketch(signature, target);
         for (int i = 0; i < this.stages; i++)
             this.masterTable[i][buckets[i]].add(entry);
         // Record the new entry.

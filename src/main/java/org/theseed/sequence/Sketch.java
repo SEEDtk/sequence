@@ -22,20 +22,16 @@ public class Sketch implements Serializable {
     private int[] signature;
     /** target object associated with the sequence */
     private String name;
-    /** numeric ID of this sketch */
-    private int idNum;
 
     /**
      * Construct a hash entry.
      *
      * @param seq		kmer object to use for comparison
      * @param string	string associated with the sequence that generated the kmers
-     * @param idNum		unique ID for this sketch
      */
-    public Sketch(int[] sk, String string, int idNum) {
+    public Sketch(int[] sk, String string) {
         this.signature = sk;
         this.name = string;
-        this.idNum = idNum;
     }
 
     /**
@@ -55,17 +51,19 @@ public class Sketch implements Serializable {
     }
 
     /**
-     * @return the ID number of this sketch
-     */
-    public int getIdNum() {
-        return idNum;
-    }
-
-    /**
      * @return the signature for this sketch
      */
     public int[] getSignature() {
         return this.signature;
+    }
+
+    /**
+     * @return the distance between this sketch and another sketch
+     *
+     * @param sketch	other sketch to compare
+     */
+    public double distance(Sketch sketch) {
+        return this.distance(sketch.signature);
     }
 
 }
