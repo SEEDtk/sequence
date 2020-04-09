@@ -3,7 +3,14 @@
  */
 package org.theseed.sequence;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -20,7 +27,9 @@ import java.util.TreeSet;
 public class Bucket implements Iterable<Sketch>, Serializable {
 
     // FIELDS
+    /** serialization identifier */
     private static final long serialVersionUID = 1890888260042916972L;
+    /** list of sketches in this bucket */
     private List<Sketch> entries;
 
     /**
@@ -173,6 +182,61 @@ public class Bucket implements Iterable<Sketch>, Serializable {
     public SortedSet<Result> search(int n, double maxDist, int[] signature) {
         SortedSet<Result> retVal = new TreeSet<Result>();
         this.search(retVal, n, maxDist, signature);
+        return retVal;
+    }
+
+    /**
+     * Search for sketches with a given name.
+     *
+     * @param name		name (target) to search for
+     *
+     * @return a set of the sketches with the same name
+     */
+    public List<Sketch> search(String name) {
+        List<Sketch> retVal = new ArrayList<Sketch>();
+        for (Sketch sketch : this)
+            if (name.contentEquals(sketch.getName()))
+                retVal.add(sketch);
+        return retVal;
+    }
+
+    /**
+     * @return the number of sketches in this bucket
+     */
+    public int size() {
+        return this.entries.size();
+    }
+
+    /**
+     * Save this bucket to a file.
+     *
+     * @param outFile	file to which the bucket should be saved
+     *
+     * @throws IOException
+     */
+    public void save(File outFile) throws IOException {
+        try (FileOutputStream outStream = new FileOutputStream(outFile)) {
+            ObjectOutputStream objStream = new ObjectOutputStream(outStream);
+            objStream.writeObject(this);
+        }
+    }
+
+    /**
+     * Load a bucket from a file.
+     *
+     * @param inFile	file from which the bucket should be loaded
+     *
+     * @return the bucket loaded from the file
+     *
+     * @throws IOException
+     * @throws ClassNotFoundException
+     */
+    public static Bucket load(File inFile) throws IOException, ClassNotFoundException {
+        Bucket retVal = null;
+        try (FileInputStream inStream = new FileInputStream(inFile)) {
+            ObjectInputStream objStream = new ObjectInputStream(inStream);
+            retVal = (Bucket) objStream.readObject();
+        }
         return retVal;
     }
 

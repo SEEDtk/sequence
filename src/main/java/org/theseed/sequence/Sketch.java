@@ -4,6 +4,7 @@
 package org.theseed.sequence;
 
 import java.io.Serializable;
+import java.util.Arrays;
 
 /**
  * This object represents a kmer signature.  Each signature is associated with an identifying name; the name serves
@@ -64,6 +65,15 @@ public class Sketch implements Serializable {
      */
     public double distance(Sketch sketch) {
         return this.distance(sketch.signature);
+    }
+
+    /**
+     * @return TRUE if the other sketch has an identical signature
+     *
+     * @param sketch	other sketch to compare
+     */
+    public boolean isSameSignature(Sketch sketch) {
+        return Arrays.equals(this.signature, sketch.signature);
     }
 
 }
