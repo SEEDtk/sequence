@@ -9,6 +9,7 @@ import static org.hamcrest.Matchers.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import org.theseed.io.TabbedLineReader;
 
@@ -18,26 +19,42 @@ import org.theseed.io.TabbedLineReader;
  */
 public class BucketTest extends TestCase {
 
+    private String p1 = "MDIQITHQVTEFDKEELLAGLRSYNAQFVDFSKNGQLGVYCRNESGEMVGGLIADRKGPWLCIDYLWVSESARNCGLGSKLMAMAEKEGLRKGCAHGLVD";
+    private String p2 = "MSKDEISYQILYRYSLEKLYSTLTRRVDNVLSFALIFLGVGVTINVGSPFILGPGIVGIAILKRVLRFGTRSAQADRQSRAWLKLFNTQHRFPSDKTLFL";
+    private String p3 = "MELQLMLNHFFERVRKDANFNAFLIDLEYNNIAYYIYFVATGNVKIITHAGHFISIKSNRKLIKVNSTPNTQLIKLTSDKHFSGEHSYEKYCTDLATAGV";
+    private String p4 = "MTNITLSTQHYRIHRSDVEPVKEKTTEKDIFAKSITAVRNSFISLSTSLSDRFSLHQQTDIPTTHFHRGSASEGRAVLTSKTVKDFMLQKLNSLDIKGNA";
+    private String p5 = "MSKDPAYARQTCEAILSAVYSNNKDHCCKLLISKGVSITPFLKEIGEAAQNAGLPGEIKNGVFTPGGAGANPFVVPLIASASIKYPHMFINHNQQVSFKA";
+
+    /**
+     * test sketch operations
+     */
+    public void testSketch() {
+        String p12 = p1 + p2;
+        ProteinKmers kmers1 = new ProteinKmers(p12);
+        int[] signature = kmers1.hashSet(50);
+        Sketch sketch1 = new Sketch(p12, "p12", 50);
+        assertTrue(Arrays.equals(signature, sketch1.getSignature()));
+        assertThat(sketch1.getName(), equalTo("p12"));
+        String p21 = p2 + p1;
+        Sketch sketch2 = new Sketch(p21, "p21", 50);
+        double dist = sketch2.distance(sketch1);
+        double dist2 = sketch2.distance(signature);
+        assertThat(dist, equalTo(dist2));
+        assertThat(dist, closeTo(0.148, 0.001));
+        Sketch sketch1a = new Sketch(signature, "p12a");
+        assertTrue(sketch1a.isSameSignature(sketch1));
+    }
+
     /**
      * test bucket search
      */
     public void testSearch() {
         Bucket testBucket = new Bucket();
-        String p1 = "MDIQITHQVTEFDKEELLAGLRSYNAQFVDFSKNGQLGVYCRNESGEMVGGLIADRKGPWLCIDYLWVSESARNCGLGSKLMAMAEKEGLRKGCAHGLVD";
-        String p2 = "MSKDEISYQILYRYSLEKLYSTLTRRVDNVLSFALIFLGVGVTINVGSPFILGPGIVGIAILKRVLRFGTRSAQADRQSRAWLKLFNTQHRFPSDKTLFL";
-        String p3 = "MELQLMLNHFFERVRKDANFNAFLIDLEYNNIAYYIYFVATGNVKIITHAGHFISIKSNRKLIKVNSTPNTQLIKLTSDKHFSGEHSYEKYCTDLATAGV";
-        String p4 = "MTNITLSTQHYRIHRSDVEPVKEKTTEKDIFAKSITAVRNSFISLSTSLSDRFSLHQQTDIPTTHFHRGSASEGRAVLTSKTVKDFMLQKLNSLDIKGNA";
-        String p5 = "MSKDPAYARQTCEAILSAVYSNNKDHCCKLLISKGVSITPFLKEIGEAAQNAGLPGEIKNGVFTPGGAGANPFVVPLIASASIKYPHMFINHNQQVSFKA";
-        ProteinKmers kmer1 = new ProteinKmers(p1);
-        ProteinKmers kmer2 = new ProteinKmers(p2);
-        ProteinKmers kmer3 = new ProteinKmers(p3);
-        ProteinKmers kmer4 = new ProteinKmers(p4);
-        ProteinKmers kmer5 = new ProteinKmers(p5);
-        Sketch sketch1 = new Sketch(kmer1.hashSet(360), "g1");
-        Sketch sketch2 = new Sketch(kmer2.hashSet(360), "g1");
-        Sketch sketch3 = new Sketch(kmer3.hashSet(360), "p3");
-        Sketch sketch4 = new Sketch(kmer4.hashSet(360), "p4");
-        Sketch sketch5 = new Sketch(kmer5.hashSet(360), "p5");
+        Sketch sketch1 = new Sketch(p1, "g1", 360);
+        Sketch sketch2 = new Sketch(p2, "g1", 360);
+        Sketch sketch3 = new Sketch(p3, "p3", 360);
+        Sketch sketch4 = new Sketch(p4, "p4", 360);
+        Sketch sketch5 = new Sketch(p5, "p5", 360);
         testBucket.add(sketch1);
         assertThat(testBucket.size(), equalTo(1));
         testBucket.add(sketch2);
@@ -51,6 +68,10 @@ public class BucketTest extends TestCase {
         found = testBucket.search("p3");
         assertThat(found.size(), equalTo(1));
         assertTrue(found.get(0) == sketch3);
+        assertThat(testBucket.get(2).getName(), equalTo("p3"));
+        List<Sketch> subList = testBucket.after(1);
+        assertThat(subList.size(), equalTo(3));
+        assertThat(subList.get(2).getName(), equalTo("p5"));
     }
 
     /**
@@ -92,6 +113,8 @@ public class BucketTest extends TestCase {
             assertThat(fSketch.getName(), equalTo(oSketch.getName()));
             assertTrue(fSketch.isSameSignature(oSketch));
         }
+        // Verify that we can add a new sketch.
+
     }
 
 }

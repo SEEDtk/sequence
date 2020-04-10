@@ -116,9 +116,14 @@ public class SeqTest extends TestCase {
                     assertThat(r.getTarget(), equalTo(prefix));
                 }
             }
+            Sketch sketch = new Sketch(prots[i], prefix, 200);
+            SortedSet<Bucket.Result> rAll = hash.getClose(sketch, 0.7);
+            assertThat(rAll.size(), greaterThanOrEqualTo(1));
+            for (Bucket.Result r : rAll)
+                assertThat(r.getDistance(), lessThanOrEqualTo(0.7));
         }
         // Compute the quality.
-        QualityCountMap<String> quality = hash.quality();
+        QualityCountMap<String> quality = hash.getQualityData();
         SortedSet<String> names = quality.keys();
         assertThat(names.size(), equalTo(5));
         for (String name : names)

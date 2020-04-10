@@ -12,7 +12,6 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -110,7 +109,7 @@ public class Bucket implements Iterable<Sketch>, Serializable {
      * Create an empty bucket.
      */
     public Bucket() {
-        this.entries = new LinkedList<Sketch>();
+        this.entries = new ArrayList<Sketch>(100);
     }
 
     /**
@@ -238,6 +237,24 @@ public class Bucket implements Iterable<Sketch>, Serializable {
             retVal = (Bucket) objStream.readObject();
         }
         return retVal;
+    }
+
+    /**
+     * @return the sketch at the specified index in the list
+     *
+     * @param i		index of the desired sketch
+     */
+    public Sketch get(int i) {
+        return this.entries.get(i);
+    }
+
+    /**
+     * @return the list of sketches after the specified position
+     *
+     * @param i		index of the postion after which to begin the return list
+     */
+    public List<Sketch> after(int i) {
+        return this.entries.subList(i + 1, this.size());
     }
 
 }

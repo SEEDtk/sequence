@@ -35,6 +35,19 @@ public class Sketch implements Serializable {
         this.name = string;
     }
 
+    /** Construct a hash entry from a protein sequence.
+     *
+     * @param protein	protein sequence to create the sketch from
+     * @param name		identifier for the sketch
+     * @param width		width of the sketch
+     *
+     */
+    public Sketch(String protein, String name, int width) {
+        ProteinKmers kmers = new ProteinKmers(protein);
+        this.signature = kmers.hashSet(width);
+        this.name = name;
+    }
+
     /**
      * @return the distance between another sequence and this entry's sequence
      *
@@ -74,6 +87,15 @@ public class Sketch implements Serializable {
      */
     public boolean isSameSignature(Sketch sketch) {
         return Arrays.equals(this.signature, sketch.signature);
+    }
+
+    /**
+     * Specify a new name for this sketch
+     *
+     * @param newName
+     */
+    public void setName(String newName) {
+        this.name = newName;
     }
 
 }

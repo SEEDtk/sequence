@@ -8,6 +8,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 
 import org.theseed.counters.QualityCountMap;
+import org.theseed.sequence.Bucket.Result;
 
 /**
  * This is a locality-sensitive hash that maps sequences to strings using a Mash/MinHash approach.  The sequence
@@ -88,16 +89,31 @@ public class LSHSeqHash  {
      * @param target	string representing the target for the sequence
      */
     public void add(SequenceKmers seqKmers, String target) {
-        // Compute the sketch and the bucket array for the new sequence.
+        // Compute the sketch for the new sequence.
         int[] signature = seqKmers.hashSet(this.width);
-        int[] buckets = this.hashSignature(signature);
-        // Place this target in the appropriate buckets.
         Sketch entry = new Sketch(signature, target);
+        // Add it to the hash.
+        this.add(entry);
+    }
+
+    /**
+     * Add a sketch to the hash.
+     *
+     * @param sketch	sketch containing a sequence signature and name
+     */
+    public void add(Sketch sketch) {
+        // Calculate the buckets.
+        int[] buckets = this.hashSignature(sketch.getSignature());
+        // Place this target in the appropriate buckets.
         for (int i = 0; i < this.stages; i++)
-            this.masterTable[i][buckets[i]].add(entry);
+            this.masterTable[i][buckets[i]].add(sketch);
         // Record the new entry.
         this.size++;
     }
+
+    /**
+     * Add a sketch to the hash.
+     */
 
     /**
      * Hash a signature.  The signature is divided in s stages (or bands). Each stage is hashed to
@@ -133,14 +149,30 @@ public class LSHSeqHash  {
      */
     public SortedSet<Bucket.Result> getClosest(SequenceKmers seqKmers, int n,
             double maxDist) {
+        // Compute the signature for the search sequence.
+        int[] signature = seqKmers.hashSet(this.width);
+        SortedSet<Bucket.Result> retVal = search(n, maxDist, signature);
+        return retVal;
+    }
+
+    /**
+     * Search for the N closest sequences to an input signature.
+     *
+     * @param n				maximum number of sequences to return
+     * @param maxDist		maximum acceptable signature distance
+     * @param signature		signature to find
+     *
+     * @return a sorted set of results found
+     */
+    private SortedSet<Bucket.Result> search(int n, double maxDist, int[] signature) {
+        // This will be the return set.
         SortedSet<Bucket.Result> retVal = new TreeSet<Bucket.Result>();
-        // Compute the sketch and the bucket array for the search sequence.
-        int[] sketch = seqKmers.hashSet(this.width);
-        int[] buckets = this.hashSignature(sketch);
+        // Get the list of buckets to search.
+        int[] buckets = this.hashSignature(signature);
         // Check each bucket for close sequences.
         for (int i = 0; i < this.stages; i++) {
             Bucket bucket = this.masterTable[i][buckets[i]];
-            bucket.search(retVal, n, maxDist, sketch);
+            bucket.search(retVal, n, maxDist, signature);
         }
         return retVal;
     }
@@ -159,7 +191,7 @@ public class LSHSeqHash  {
      *
      * @return a QualityCountMap containing the number of good and bad sequences for each named cluster
      */
-    public QualityCountMap<String> quality() {
+    public QualityCountMap<String> getQualityData() {
         QualityCountMap<String> retVal = new QualityCountMap<String>();
         // Each incoming sequence appears as a sketch, and a copy of that sketch will appear
         // once in every stage.  We go through the buckets in the first stage.  For each,
@@ -186,6 +218,35 @@ public class LSHSeqHash  {
             }
         }
         return retVal;
+    }
+
+    /**
+     * @return the quality ratio (good/total) for this hash
+     */
+    public double getQuality() {
+        double retVal = 1.0;
+        int good = 0;
+        int bad = 0;
+        QualityCountMap<String> counts = this.getQualityData();
+        for (String cluster : counts.allKeys()) {
+            good += counts.good(cluster);
+            bad += counts.bad(cluster);
+        }
+        if (good > 0)
+            retVal = good / (double) (good + bad);
+        else if (bad > 0)
+            retVal = 0.0;
+        return retVal;
+    }
+
+    /**
+     * @return a set of sketches close to an incoming sketch
+     *
+     * @param sketch	sketch whose neighbors are desired
+     * @param maxDist	the maximum acceptable sketch distance
+     */
+    public SortedSet<Result> getClose(Sketch sketch, double maxDist) {
+        return this.search(Integer.MAX_VALUE, maxDist, sketch.getSignature());
     }
 
 
