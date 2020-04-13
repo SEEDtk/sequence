@@ -12,7 +12,9 @@ import static org.hamcrest.Matchers.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
@@ -47,6 +49,20 @@ public class SeqTest extends TestCase {
         return new TestSuite( SeqTest.class );
     }
 
+    /** test proteins */
+    private String p1 = "MDIQITHQVTEFDKEELLAGLRSYNAQFVDFSKNGQLGVYCRNESGEMVGGLIADRKGPWLCIDYLWVSESARNCGLGSKLMAMAEKEGLRKGCAHGLVD";
+    private String p2 = "MSKDEISYQILYRYSLEKLYSTLTRRVDNVLSFALIFLGVGVTINVGSPFILGPGIVGIAILKRVLRFGTRSAQADRQSRAWLKLFNTQHRFPSDKTLFL";
+    private String p3 = "MELQLMLNHFFERVRKDANFNAFLIDLEYNNIAYYIYFVATGNVKIITHAGHFISIKSNRKLIKVNSTPNTQLIKLTSDKHFSGEHSYEKYCTDLATAGV";
+    private String p4 = "MTNITLSTQHYRIHRSDVEPVKEKTTEKDIFAKSITAVRNSFISLSTSLSDRFSLHQQTDIPTTHFHRGSASEGRAVLTSKTVKDFMLQKLNSLDIKGNA";
+    private String p5 = "MSKDPAYARQTCEAILSAVYSNNKDHCCKLLISKGVSITPFLKEIGEAAQNAGLPGEIKNGVFTPGGAGANPFVVPLIASASIKYPHMFINHNQQVSFKA";
+
+    private ProteinKmers k1 = new ProteinKmers(p1);
+    private ProteinKmers k2 = new ProteinKmers(p2);
+    private ProteinKmers k3 = new ProteinKmers(p3);
+    private ProteinKmers k4 = new ProteinKmers(p4);
+    private ProteinKmers k5 = new ProteinKmers(p5);
+    private ProteinKmers[] kArray = new ProteinKmers[] { k1, k2, k3, k4, k5 };
+
     /** jumble arrays for mutations */
     private static final int[] JUMBLE1 = new int[] { 67, 61, 96, 65, 56, 95, 2, 75, 17, 33, 87, 41, 16, 12, 15, 94, 6, 68, 0, 49, 38, 7, 34, 51, 92, 5, 24, 13, 45, 44, 93, 14, 11, 27, 74, 29, 88, 76, 19, 90, 8, 66, 80, 82, 50, 4, 25, 46, 70, 91};
     private static final int[] JUMBLE2 = new int[] { 85, 60, 9, 58, 52, 72, 54, 39, 20, 81, 30, 86, 10, 69, 77, 26, 47, 35, 73, 89, 98, 53, 28, 36, 62, 84, 32, 42, 57, 97, 21, 63, 83, 59, 37, 79, 40, 48, 78, 31, 55, 3, 22, 43, 18, 71, 64, 1, 23, 99};
@@ -61,24 +77,13 @@ public class SeqTest extends TestCase {
         // of length 100. For each, we will generate a set of mutations of 10, 20, 30, 40, and 50 amino acids.
         // These are put into the hash, and then we ask for the closest N proteins of each starting protein.
         // This is a crude test, but is a good place to start.
-        String p1 = "MDIQITHQVTEFDKEELLAGLRSYNAQFVDFSKNGQLGVYCRNESGEMVGGLIADRKGPWLCIDYLWVSESARNCGLGSKLMAMAEKEGLRKGCAHGLVD";
-        String p2 = "MSKDEISYQILYRYSLEKLYSTLTRRVDNVLSFALIFLGVGVTINVGSPFILGPGIVGIAILKRVLRFGTRSAQADRQSRAWLKLFNTQHRFPSDKTLFL";
-        String p3 = "MELQLMLNHFFERVRKDANFNAFLIDLEYNNIAYYIYFVATGNVKIITHAGHFISIKSNRKLIKVNSTPNTQLIKLTSDKHFSGEHSYEKYCTDLATAGV";
-        String p4 = "MTNITLSTQHYRIHRSDVEPVKEKTTEKDIFAKSITAVRNSFISLSTSLSDRFSLHQQTDIPTTHFHRGSASEGRAVLTSKTVKDFMLQKLNSLDIKGNA";
-        String p5 = "MSKDPAYARQTCEAILSAVYSNNKDHCCKLLISKGVSITPFLKEIGEAAQNAGLPGEIKNGVFTPGGAGANPFVVPLIASASIKYPHMFINHNQQVSFKA";
         // Test the distances of the original 5.
-        ProteinKmers k1 = new ProteinKmers(p1);
-        ProteinKmers k2 = new ProteinKmers(p2);
-        ProteinKmers k3 = new ProteinKmers(p3);
-        ProteinKmers k4 = new ProteinKmers(p4);
-        ProteinKmers k5 = new ProteinKmers(p5);
-        ProteinKmers[] kArray = new ProteinKmers[] { k1, k2, k3, k4, k5 };
         for (int i = 0; i < 4; i++)
             for (int j = i + 1; j < 5; j++)
                 assertThat(kArray[i].distance(kArray[j]), greaterThan(0.99));
         String[] prots = new String[] { p1, p2, p3, p4, p5 };
         // Create the hash.
-        LSHSeqHash hash = new LSHSeqHash(200, 15, 20);
+        LSHMemSeqHash hash = new LSHMemSeqHash(200, 15, 20);
         // Now create the mutations.
         for (int i = 0; i < 5; i++) {
             String p = prots[i];
@@ -136,7 +141,7 @@ public class SeqTest extends TestCase {
      */
     public void testProtFamilies() throws IOException {
         // Create the hash.
-        LSHSeqHash seqHash = new LSHSeqHash(250, 25, 100);
+        LSHMemSeqHash seqHash = new LSHMemSeqHash(250, 25, 100);
         // This will hold the sample sequence for each family.
         Map<String, ProteinKmers> sampleHash = new HashMap<String, ProteinKmers>(100);
         // This will count the members of each family.
@@ -173,6 +178,22 @@ public class SeqTest extends TestCase {
         }
     }
 
+    /**
+     * test traversal
+     */
+    public void testIterator() {
+        LSHMemSeqHash hash = new LSHMemSeqHash(10, 10, 200);
+        hash.add(k1, "p1");
+        hash.add(k2, "p2");
+        hash.add(k3, "p3");
+        hash.add(k4, "p4");
+        hash.add(k5, "p5");
+        List<String> found = new ArrayList<String>(5);
+        for (Sketch sketch : hash.sketches())
+            found.add(sketch.getName());
+        assertThat(found.size(), equalTo(5));
+        assertThat(found, containsInAnyOrder("p1", "p2", "p3", "p4", "p5"));
+    }
 
     private static final String AA_LIST = "GPAVLIMCFYWHKRQNEDSTG";
 

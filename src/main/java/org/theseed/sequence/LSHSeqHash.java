@@ -7,8 +7,9 @@ import java.util.Iterator;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.theseed.counters.QualityCountMap;
-import org.theseed.sequence.Bucket.Result;
 
 /**
  * This is a locality-sensitive hash that maps sequences to strings using a Mash/MinHash approach.  The sequence
@@ -20,12 +21,79 @@ import org.theseed.sequence.Bucket.Result;
  * @author Bruce Parrello
  *
  */
-public class LSHSeqHash  {
+public abstract class LSHSeqHash {
+
+    /**
+     * This class iterates through all the sketches in this hash.  Each sketch occurs once in
+     * every stage, so we simply iterate through the first stage.
+     */
+    public class SketchIterator implements Iterable<Sketch>, Iterator<Sketch> {
+
+        /** index of the current bucket (in the first stage) */
+        private int currentBucket;
+        /** iterator for the current bucket */
+        private Iterator<Sketch> bucketIterator;
+
+        public SketchIterator() {
+            this.bucketIterator = this.getNextBucket(0);
+        }
+
+        /**
+         * @return the next bucket with a sketch in it, or NULL if there is none
+         *
+         * @param idx	the index of the first position to check
+         */
+        private Iterator<Sketch> getNextBucket(int idx) {
+            Iterator<Sketch> retVal = null;
+            // Find a nonempty bucket.
+            while (idx < LSHSeqHash.this.buckets &&
+                    ! LSHSeqHash.this.checkBucket(0, idx)) idx++;
+            if (idx < LSHSeqHash.this.buckets) {
+                this.currentBucket = idx;
+                retVal = LSHSeqHash.this.getBucket(0, idx).iterator();
+            }
+            return retVal;
+        }
+
+        @Override
+        public Iterator<Sketch> iterator() {
+            return this;
+        }
+
+        @Override
+        public boolean hasNext() {
+            boolean retVal = this.bucketIterator != null;
+            if (retVal && ! this.bucketIterator.hasNext()) {
+                this.bucketIterator = this.getNextBucket(this.currentBucket + 1);
+                retVal = (this.bucketIterator != null);
+            }
+            return retVal;
+        }
+
+        @Override
+        public Sketch next() {
+            Sketch retVal = null;
+            if (this.bucketIterator != null) {
+                retVal = this.bucketIterator.next();
+                if (retVal == null) {
+                    this.bucketIterator = this.getNextBucket(this.currentBucket + 1);
+                    if (this.bucketIterator != null) {
+                        retVal = this.bucketIterator.next();
+                    }
+                }
+            }
+            return retVal;
+        }
+
+    }
+
+    // FIELDS
 
     /** large prime number for hashing */
     protected static final long LARGE_PRIME =  433494437;
 
-    // FIELDS
+    /** logging facility */
+    protected static Logger log = LoggerFactory.getLogger(LSHSeqHash.class);
 
     /** number of stages */
     private int stages;
@@ -39,9 +107,6 @@ public class LSHSeqHash  {
     /** number of buckets per stage */
     private int buckets;
 
-    /** master hash table (first index is stage, second is bucket */
-    private Bucket[][] masterTable;
-
     /**
      * Construct a blank, empty sequence hash.
      *
@@ -52,13 +117,17 @@ public class LSHSeqHash  {
     public LSHSeqHash(int w, int s, int b) {
         this.stages = s;
         this.size = 0;
-        this.masterTable = new Bucket[s][b];
-        for (int si = 0; si < s; si++)
-            for (int bi = 0; bi < b; bi++)
-                this.masterTable[si][bi] = new Bucket();
         this.width = w;
         this.buckets = b;
     }
+
+    /**
+     * @return TRUE if there are sketches in the specified bucket
+     *
+     * @param s		relevant stage
+     * @param idx	relevant bucket index
+     */
+    public abstract boolean checkBucket(int s, int idx);
 
     /**
      * @return the distance between two signatures
@@ -71,7 +140,7 @@ public class LSHSeqHash  {
     }
 
     /**
-     * @return the estimated distance between two sequences using sketches
+     * @return the estimated distance between two sequences using signatures
      *
      * @param kmers		kmers for the first sequence
      * @param other		kmers for the second sequence
@@ -106,14 +175,19 @@ public class LSHSeqHash  {
         int[] buckets = this.hashSignature(sketch.getSignature());
         // Place this target in the appropriate buckets.
         for (int i = 0; i < this.stages; i++)
-            this.masterTable[i][buckets[i]].add(sketch);
+            this.addToBucket(i, buckets[i], sketch);
         // Record the new entry.
         this.size++;
     }
 
     /**
-     * Add a sketch to the hash.
+     * Add the specified sketch to a particular bucket in a particular stage.
+     *
+     * @param s			relevant stage
+     * @param idx		index of the bucket in that stage
+     * @param sketch	sketch to add
      */
+    protected abstract void addToBucket(int s, int idx, Sketch sketch);
 
     /**
      * Hash a signature.  The signature is divided in s stages (or bands). Each stage is hashed to
@@ -164,18 +238,26 @@ public class LSHSeqHash  {
      *
      * @return a sorted set of results found
      */
-    private SortedSet<Bucket.Result> search(int n, double maxDist, int[] signature) {
+    protected SortedSet<Bucket.Result> search(int n, double maxDist, int[] signature) {
         // This will be the return set.
         SortedSet<Bucket.Result> retVal = new TreeSet<Bucket.Result>();
         // Get the list of buckets to search.
         int[] buckets = this.hashSignature(signature);
         // Check each bucket for close sequences.
         for (int i = 0; i < this.stages; i++) {
-            Bucket bucket = this.masterTable[i][buckets[i]];
+            Bucket bucket = this.getBucket(i, buckets[i]);
             bucket.search(retVal, n, maxDist, signature);
         }
         return retVal;
     }
+
+    /**
+     * @return the bucket at the specified stage and hash value.
+     *
+     * @param s		stage for this bucket
+     * @param h		hash value for the bucket
+     */
+    protected abstract Bucket getBucket(int s, int h);
 
     /**
      * @return the number of entries in this table
@@ -197,27 +279,32 @@ public class LSHSeqHash  {
         // once in every stage.  We go through the buckets in the first stage.  For each,
         // we compute its buckets in all the stages using hashSignature.  Then we check
         // each bucket and stop if we find a different sketch for the same cluster.
-        for (Bucket bucket : this.masterTable[0]) {
-            for (Sketch sketch : bucket) {
-                int[] bucketList = this.hashSignature(sketch.getSignature());
-                String name = sketch.getName();
-                boolean matchFound = false;
-                // Check each bucket for a match.
-                for (int i = 0; i < this.stages && ! matchFound; i++) {
-                    Bucket testBucket = this.masterTable[i][bucketList[i]];
-                    Iterator<Sketch> iter = testBucket.iterator();
-                    while (iter.hasNext() && ! matchFound) {
-                        Sketch other = iter.next();
-                        matchFound = (other != sketch && name.contentEquals(other.getName()));
-                    }
+        for (Sketch sketch : this.sketches()) {
+            int[] bucketList = this.hashSignature(sketch.getSignature());
+            String name = sketch.getName();
+            boolean matchFound = false;
+            // Check each bucket for a match.
+            for (int i = 0; i < this.stages && ! matchFound; i++) {
+                Bucket testBucket = this.getBucket(i, bucketList[i]);
+                Iterator<Sketch> iter = testBucket.iterator();
+                while (iter.hasNext() && ! matchFound) {
+                    Sketch other = iter.next();
+                    matchFound = (other != sketch && name.contentEquals(other.getName()));
                 }
-                if (matchFound)
-                    retVal.setGood(name);
-                else
-                    retVal.setBad(name);
             }
+            if (matchFound)
+                retVal.setGood(name);
+            else
+                retVal.setBad(name);
         }
         return retVal;
+    }
+
+    /**
+     * @return an iterator for all the sketches in this hash
+     */
+    protected Iterable<Sketch> sketches() {
+        return new SketchIterator();
     }
 
     /**
@@ -245,9 +332,8 @@ public class LSHSeqHash  {
      * @param sketch	sketch whose neighbors are desired
      * @param maxDist	the maximum acceptable sketch distance
      */
-    public SortedSet<Result> getClose(Sketch sketch, double maxDist) {
+    public SortedSet<Bucket.Result> getClose(Sketch sketch, double maxDist) {
         return this.search(Integer.MAX_VALUE, maxDist, sketch.getSignature());
     }
-
 
 }

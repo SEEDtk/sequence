@@ -114,7 +114,14 @@ public class BucketTest extends TestCase {
             assertTrue(fSketch.isSameSignature(oSketch));
         }
         // Verify that we can add a new sketch.
-
+        Sketch newSketch = new Sketch(p1, "p1", 360);
+        saved.add(newSketch);
+        assertThat(saved.size(), equalTo(original.size() + 1));
+        List<Sketch> found = saved.search("p1");
+        assertThat(found.size(), equalTo(1));
+        Sketch fSketch = found.get(0);
+        assertThat(fSketch.getName(), equalTo("p1"));
+        assertTrue(fSketch.isSameSignature(newSketch));
     }
 
 }
