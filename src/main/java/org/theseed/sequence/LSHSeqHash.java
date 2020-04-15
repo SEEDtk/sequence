@@ -98,9 +98,6 @@ public abstract class LSHSeqHash {
     /** number of stages */
     private int stages;
 
-    /** number of objects stored */
-    private int size;
-
     /** width of each signature */
     private int width;
 
@@ -116,7 +113,6 @@ public abstract class LSHSeqHash {
      */
     public LSHSeqHash(int w, int s, int b) {
         this.stages = s;
-        this.size = 0;
         this.width = w;
         this.buckets = b;
     }
@@ -176,8 +172,6 @@ public abstract class LSHSeqHash {
         // Place this target in the appropriate buckets.
         for (int i = 0; i < this.stages; i++)
             this.addToBucket(i, buckets[i], sketch);
-        // Record the new entry.
-        this.size++;
     }
 
     /**
@@ -187,7 +181,9 @@ public abstract class LSHSeqHash {
      * @param idx		index of the bucket in that stage
      * @param sketch	sketch to add
      */
-    protected abstract void addToBucket(int s, int idx, Sketch sketch);
+    protected void addToBucket(int s, int idx, Sketch sketch) {
+        this.getBucket(s, idx).add(sketch);
+    }
 
     /**
      * Hash a signature.  The signature is divided in s stages (or bands). Each stage is hashed to
@@ -260,13 +256,6 @@ public abstract class LSHSeqHash {
     protected abstract Bucket getBucket(int s, int h);
 
     /**
-     * @return the number of entries in this table
-     */
-    public int size() {
-        return this.size;
-    }
-
-    /**
      * Compute the quality of this hash.  In order to use this function, it is presumed that every
      * name (sequence ID) represents a cluster.  The quality of a cluster is the fraction of its
      * sequences that appear in at least one stage with another sequence in the same cluster.
@@ -303,7 +292,7 @@ public abstract class LSHSeqHash {
     /**
      * @return an iterator for all the sketches in this hash
      */
-    protected Iterable<Sketch> sketches() {
+    public Iterable<Sketch> sketches() {
         return new SketchIterator();
     }
 

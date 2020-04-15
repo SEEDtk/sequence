@@ -30,6 +30,14 @@ public class Bucket implements Iterable<Sketch>, Serializable {
     private static final long serialVersionUID = 1890888260042916972L;
     /** list of sketches in this bucket */
     private List<Sketch> entries;
+    /** TRUE if this bucket has been modified since the last load */
+    private transient boolean modified;
+    /** time of last access */
+    private transient long timeStamp;
+    /** activity counter */
+    private static transient long timeCounter = 0;
+
+
 
     /**
      * This nested class returns a result.  It contains the distance and the target (sequence ID),
@@ -110,6 +118,8 @@ public class Bucket implements Iterable<Sketch>, Serializable {
      */
     public Bucket() {
         this.entries = new ArrayList<Sketch>(100);
+        this.modified = false;
+        this.timeStamp = 0;
     }
 
     /**
@@ -119,6 +129,8 @@ public class Bucket implements Iterable<Sketch>, Serializable {
      */
     public void add(Sketch entry) {
         this.entries.add(entry);
+        this.modified = true;
+        this.timeStamp = ++timeCounter;
     }
 
     @Override
@@ -167,6 +179,7 @@ public class Bucket implements Iterable<Sketch>, Serializable {
             if (dist <= maxDist)
                 merge(results, n, dist, entry.getName());
         }
+        this.timeStamp = ++timeCounter;
     }
 
     /**
@@ -181,6 +194,7 @@ public class Bucket implements Iterable<Sketch>, Serializable {
     public SortedSet<Result> search(int n, double maxDist, int[] signature) {
         SortedSet<Result> retVal = new TreeSet<Result>();
         this.search(retVal, n, maxDist, signature);
+        this.timeStamp = ++timeCounter;
         return retVal;
     }
 
@@ -196,6 +210,7 @@ public class Bucket implements Iterable<Sketch>, Serializable {
         for (Sketch sketch : this)
             if (name.contentEquals(sketch.getName()))
                 retVal.add(sketch);
+        this.timeStamp = ++timeCounter;
         return retVal;
     }
 
@@ -217,6 +232,7 @@ public class Bucket implements Iterable<Sketch>, Serializable {
         try (FileOutputStream outStream = new FileOutputStream(outFile)) {
             ObjectOutputStream objStream = new ObjectOutputStream(outStream);
             objStream.writeObject(this);
+            this.modified = false;
         }
     }
 
@@ -235,6 +251,8 @@ public class Bucket implements Iterable<Sketch>, Serializable {
         try (FileInputStream inStream = new FileInputStream(inFile)) {
             ObjectInputStream objStream = new ObjectInputStream(inStream);
             retVal = (Bucket) objStream.readObject();
+            // The modification flag is transient, so we need to set it here.
+            retVal.modified = false;
         }
         return retVal;
     }
@@ -255,6 +273,29 @@ public class Bucket implements Iterable<Sketch>, Serializable {
      */
     public List<Sketch> after(int i) {
         return this.entries.subList(i + 1, this.size());
+    }
+
+    /**
+     * @return TRUE if this bucket is modified
+     */
+    public boolean isModified() {
+        return this.modified;
+    }
+
+    /**
+     * This is a comparison operation used to sort buckets for deletion
+     * from the cache.  Buckets are compared by timestamp.  We want to sort the
+     * oldest buckets first, so we go for the lowest time stamp.  If two buckets
+     * are the same age, then they are usually unmodified.  In this case, we
+     * prefer the shortest bucket.  Some buckets may compare equal, but that is
+     * ok for us.
+     */
+    public int compareTo(Bucket o) {
+        int retVal = Long.compare(this.timeStamp, o.timeStamp);
+        if (retVal == 0) {
+            retVal = this.size() - o.size();
+        }
+        return retVal;
     }
 
 }

@@ -31,13 +31,19 @@ public class LSHMemSeqHash extends LSHSeqHash {
                 this.masterTable[si][bi] = new Bucket();
     }
 
+    /**
+     * @return the number of entries in this table
+     */
+    public int size() {
+        int retVal = 0;
+        for (Bucket bucket : this.masterTable[0])
+            retVal += bucket.size();
+        return retVal;
+    }
+
     @Override
     public boolean checkBucket(int s, int idx) {
         return (this.masterTable[s][idx].size() != 0);
-    }
-    @Override
-    protected void addToBucket(int s, int idx, Sketch sketch) {
-        this.masterTable[s][idx].add(sketch);
     }
 
     @Override

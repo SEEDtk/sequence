@@ -11,6 +11,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.SortedSet;
+
 import org.theseed.io.TabbedLineReader;
 
 /**
@@ -100,11 +102,16 @@ public class BucketTest extends TestCase {
             }
         }
         // Now we write out the bucket.
+        assertTrue(original.isModified());
         File saveFile = new File("src/test", "bucket.ser");
         original.save(saveFile);
+        assertFalse(original.isModified());
         // Read in a copy.
         Bucket saved = Bucket.load(saveFile);
         assertThat(saved.size(), equalTo(original.size()));
+        assertFalse(saved.isModified());
+        // The buckets should compare different.
+        assertFalse(saved.compareTo(original) == 0);
         // Veryify the sketches are the same.
         for (Sketch oSketch : original) {
             List<Sketch> found = saved.search(oSketch.getName());
@@ -116,6 +123,7 @@ public class BucketTest extends TestCase {
         // Verify that we can add a new sketch.
         Sketch newSketch = new Sketch(p1, "p1", 360);
         saved.add(newSketch);
+        assertTrue(saved.isModified());
         assertThat(saved.size(), equalTo(original.size() + 1));
         List<Sketch> found = saved.search("p1");
         assertThat(found.size(), equalTo(1));
@@ -124,4 +132,46 @@ public class BucketTest extends TestCase {
         assertTrue(fSketch.isSameSignature(newSketch));
     }
 
+    /**
+     * Test an empty bucket save and load.
+     *
+     * @throws IOException
+     * @throws ClassNotFoundException
+     */
+    public void testEmptyBucket() throws IOException, ClassNotFoundException {
+        Bucket testBucket = new Bucket();
+        File emptyBucketFile = new File("src/test", "empty.ser");
+        testBucket.save(emptyBucketFile);
+        Bucket loadBucket = Bucket.load(emptyBucketFile);
+        assertThat(loadBucket.size(), equalTo(0));
+    }
+
+    /**
+     * Test bucket comparison.
+     */
+    public void testBucketCompare() {
+        Bucket testBucket = new Bucket();
+        Sketch sketch1 = new Sketch(p1, "g1", 360);
+        Sketch sketch2 = new Sketch(p2, "g1", 360);
+        Sketch sketch3 = new Sketch(p3, "p3", 360);
+        Sketch sketch4 = new Sketch(p4, "p4", 360);
+        Sketch sketch5 = new Sketch(p5, "p5", 360);
+        testBucket.add(sketch1);
+        testBucket.add(sketch2);
+        testBucket.add(sketch3);
+        testBucket.add(sketch4);
+        testBucket.add(sketch5);
+        Bucket smallBucket = new Bucket();
+        assertThat(testBucket.compareTo(smallBucket), greaterThan(0));
+        @SuppressWarnings("unused")
+        List<Sketch> found = testBucket.search("p1");
+        assertThat(testBucket.compareTo(smallBucket), greaterThan(0));
+        int[] signature = sketch1.getSignature();
+        @SuppressWarnings("unused")
+        SortedSet<Bucket.Result> results = smallBucket.search(5, 0.9, signature);
+        assertThat(smallBucket.compareTo(testBucket), greaterThan(0));
+        results = smallBucket.search(1, 0.9, signature);
+        results = testBucket.search(1, 0.9, signature);
+        assertThat(testBucket.compareTo(smallBucket), greaterThan(0));
+    }
 }

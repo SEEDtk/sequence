@@ -50,18 +50,18 @@ public class SeqTest extends TestCase {
     }
 
     /** test proteins */
-    private String p1 = "MDIQITHQVTEFDKEELLAGLRSYNAQFVDFSKNGQLGVYCRNESGEMVGGLIADRKGPWLCIDYLWVSESARNCGLGSKLMAMAEKEGLRKGCAHGLVD";
-    private String p2 = "MSKDEISYQILYRYSLEKLYSTLTRRVDNVLSFALIFLGVGVTINVGSPFILGPGIVGIAILKRVLRFGTRSAQADRQSRAWLKLFNTQHRFPSDKTLFL";
-    private String p3 = "MELQLMLNHFFERVRKDANFNAFLIDLEYNNIAYYIYFVATGNVKIITHAGHFISIKSNRKLIKVNSTPNTQLIKLTSDKHFSGEHSYEKYCTDLATAGV";
-    private String p4 = "MTNITLSTQHYRIHRSDVEPVKEKTTEKDIFAKSITAVRNSFISLSTSLSDRFSLHQQTDIPTTHFHRGSASEGRAVLTSKTVKDFMLQKLNSLDIKGNA";
-    private String p5 = "MSKDPAYARQTCEAILSAVYSNNKDHCCKLLISKGVSITPFLKEIGEAAQNAGLPGEIKNGVFTPGGAGANPFVVPLIASASIKYPHMFINHNQQVSFKA";
+    public static String p1 = "MDIQITHQVTEFDKEELLAGLRSYNAQFVDFSKNGQLGVYCRNESGEMVGGLIADRKGPWLCIDYLWVSESARNCGLGSKLMAMAEKEGLRKGCAHGLVD";
+    public static String p2 = "MSKDEISYQILYRYSLEKLYSTLTRRVDNVLSFALIFLGVGVTINVGSPFILGPGIVGIAILKRVLRFGTRSAQADRQSRAWLKLFNTQHRFPSDKTLFL";
+    public static String p3 = "MELQLMLNHFFERVRKDANFNAFLIDLEYNNIAYYIYFVATGNVKIITHAGHFISIKSNRKLIKVNSTPNTQLIKLTSDKHFSGEHSYEKYCTDLATAGV";
+    public static String p4 = "MTNITLSTQHYRIHRSDVEPVKEKTTEKDIFAKSITAVRNSFISLSTSLSDRFSLHQQTDIPTTHFHRGSASEGRAVLTSKTVKDFMLQKLNSLDIKGNA";
+    public static String p5 = "MSKDPAYARQTCEAILSAVYSNNKDHCCKLLISKGVSITPFLKEIGEAAQNAGLPGEIKNGVFTPGGAGANPFVVPLIASASIKYPHMFINHNQQVSFKA";
 
-    private ProteinKmers k1 = new ProteinKmers(p1);
-    private ProteinKmers k2 = new ProteinKmers(p2);
-    private ProteinKmers k3 = new ProteinKmers(p3);
-    private ProteinKmers k4 = new ProteinKmers(p4);
-    private ProteinKmers k5 = new ProteinKmers(p5);
-    private ProteinKmers[] kArray = new ProteinKmers[] { k1, k2, k3, k4, k5 };
+    private static ProteinKmers k1 = new ProteinKmers(p1);
+    private static ProteinKmers k2 = new ProteinKmers(p2);
+    private static ProteinKmers k3 = new ProteinKmers(p3);
+    private static ProteinKmers k4 = new ProteinKmers(p4);
+    private static ProteinKmers k5 = new ProteinKmers(p5);
+    private static ProteinKmers[] kArray = new ProteinKmers[] { k1, k2, k3, k4, k5 };
 
     /** jumble arrays for mutations */
     private static final int[] JUMBLE1 = new int[] { 67, 61, 96, 65, 56, 95, 2, 75, 17, 33, 87, 41, 16, 12, 15, 94, 6, 68, 0, 49, 38, 7, 34, 51, 92, 5, 24, 13, 45, 44, 93, 14, 11, 27, 74, 29, 88, 76, 19, 90, 8, 66, 80, 82, 50, 4, 25, 46, 70, 91};
@@ -85,24 +85,7 @@ public class SeqTest extends TestCase {
         // Create the hash.
         LSHMemSeqHash hash = new LSHMemSeqHash(200, 15, 20);
         // Now create the mutations.
-        for (int i = 0; i < 5; i++) {
-            String p = prots[i];
-            int[] jumble = JUMBLES[i];
-            // This will be the starting point of the current mutation block.
-            int mutations = 0;
-            while (mutations <= 46) {
-                int limit = mutations + 4;
-                for (int k = mutations; k < limit; k++)
-                    p = mutate(p, jumble[k]);
-                mutations = limit;
-                String label = String.format("p%d", i);
-                ProteinKmers kmers = new ProteinKmers(p);
-                double dist = kmers.distance(kArray[i]);
-                double skDist = hash.testSketches(kmers, kArray[i]);
-                assertThat(label, Math.abs(dist - skDist), lessThan(0.1));
-                hash.add(kmers, label);
-            }
-        }
+        createTestingHash(prots, hash);
         // Get the closest 5 to each original protein.
         for (int i = 0; i < 5; i++) {
             Bucket.Result[] r1 = new Bucket.Result[8];
@@ -133,6 +116,34 @@ public class SeqTest extends TestCase {
         assertThat(names.size(), equalTo(5));
         for (String name : names)
             assertThat(quality.fractionGood(name), closeTo(1.0, 0.001));
+    }
+
+    /**
+     * Fill a hash with proteins for testing.
+     *
+     * @param prots		array of starting proteins
+     * @param hash		hash to fill
+     */
+    public static void createTestingHash(String[] prots, LSHSeqHash hash) {
+        for (int i = 0; i < prots.length; i++) {
+            String p = prots[i];
+            ProteinKmers baseP = new ProteinKmers(p);
+            int[] jumble = JUMBLES[i % 5];
+            // This will be the starting point of the current mutation block.
+            int mutations = 0;
+            while (mutations <= 46) {
+                int limit = mutations + 4;
+                for (int k = mutations; k < limit; k++)
+                    p = mutate(p, jumble[k]);
+                mutations = limit;
+                String label = String.format("p%d", i);
+                ProteinKmers kmers = new ProteinKmers(p);
+                double dist = kmers.distance(baseP);
+                double skDist = hash.testSketches(kmers, baseP);
+                assertThat(label, Math.abs(dist - skDist), lessThan(0.1));
+                hash.add(kmers, label);
+            }
+        }
     }
 
     /**
@@ -205,7 +216,7 @@ public class SeqTest extends TestCase {
      *
      * @return the mutated protein
      */
-    private String mutate(String prot, int pos) {
+    private static String mutate(String prot, int pos) {
         char[] acids = prot.toCharArray();
         char aa = acids[pos];
         acids[pos] = AA_LIST.charAt(AA_LIST.indexOf(aa) + 1);
