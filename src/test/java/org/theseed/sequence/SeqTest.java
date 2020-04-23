@@ -22,6 +22,10 @@ import java.util.SortedSet;
 import org.theseed.counters.CountMap;
 import org.theseed.counters.QualityCountMap;
 import org.theseed.io.TabbedLineReader;
+import org.theseed.sequence.hash.Bucket;
+import org.theseed.sequence.hash.LSHMemSeqHash;
+import org.theseed.sequence.hash.LSHSeqHash;
+import org.theseed.sequence.hash.Sketch;
 
 /**
  * Unit test for minhash stuff.

@@ -12,6 +12,9 @@ import java.io.IOException;
 import java.util.SortedSet;
 
 import org.theseed.counters.CountMap;
+import org.theseed.sequence.hash.Bucket;
+import org.theseed.sequence.hash.LSHDiskSeqHash;
+import org.theseed.sequence.hash.Sketch;
 
 public class DiskHashTest extends TestCase {
 
