@@ -32,7 +32,7 @@ public class BlastDB {
      */
     public enum Type {
         DNA("nucl", "blastn", "tblastn"),
-        PROTEIN("prot", "tblastn", "blastp");
+        PROTEIN("prot", "blastx", "blastp");
 
         /** parameter for dbtype option */
         private String dbParm;
@@ -167,7 +167,7 @@ public class BlastDB {
      */
     public List<BlastHit> blastProteins(List<Sequence> proteins, BlastParms parms)
             throws CloneNotSupportedException, IOException, InterruptedException {
-        File blastProgram = new File(BLAST_PATH, this.type.getProteinBlaster());
+        String blastProgram = this.type.getProteinBlaster();
         List<BlastHit> retVal = this.runBlast(blastProgram, proteins, parms, Type.PROTEIN);
         return retVal;
     }
@@ -186,7 +186,7 @@ public class BlastDB {
      */
     public List<BlastHit> blastDna(List<Sequence> contigs, BlastParms parms)
             throws CloneNotSupportedException, IOException, InterruptedException {
-        File blastProgram = new File(BLAST_PATH, this.type.getDnaBlaster());
+        String blastProgram = this.type.getDnaBlaster();
         List<BlastHit> retVal = this.runBlast(blastProgram, contigs, parms, Type.DNA);
         return retVal;
     }
@@ -194,7 +194,7 @@ public class BlastDB {
     /**
      * Run BLAST against the specified sequences with the specified parameters.
      *
-     * @param blastProgram	file containing the BLAST program to run
+     * @param blastProgram	name of the BLAST program to run
      * @param seqs			list of query sequences
      * @param parms			user-specified blast parameters
      * @param qType			query sequence type
@@ -205,7 +205,7 @@ public class BlastDB {
      * @throws IOException
      * @throws InterruptedException
      */
-    private List<BlastHit> runBlast(File blastProgram, List<Sequence> seqs, BlastParms parms, Type qType)
+    private List<BlastHit> runBlast(String blastProgram, List<Sequence> seqs, BlastParms parms, Type qType)
             throws CloneNotSupportedException, IOException, InterruptedException {
         List<BlastHit> retVal = new ArrayList<BlastHit>();
         // Set up the parameters and form the command.
@@ -213,11 +213,11 @@ public class BlastDB {
         myParms.set("-outfmt", BlastHit.OUT_FORMAT);
         myParms.set("-db", this.dbFile.getAbsolutePath());
         List<String> command = new ArrayList<String>();
-        command.add(blastProgram.getAbsolutePath());
+        command.add(blastProgram);
         command.addAll(myParms.get());
         ProcessBuilder blastCommand = new ProcessBuilder(command);
         // Start the BLAST.
-        log.info("Running BLAST command {}.", blastProgram.getName());
+        log.info("Running BLAST command {}.", blastProgram);
         Process blastProcess = blastCommand.start();
         // Write the sequences to the BLAST process and save a map of sequence IDs to comments.
         Map<String, String> qMap = new HashMap<String, String>();
@@ -232,13 +232,15 @@ public class BlastDB {
         log.info("{} query sequences submitted.", qMap.size());
         // Read back the results.
         try (LineReader blastReader = new LineReader(blastProcess.getInputStream())) {
+            int count = 0;
             for (String line : blastReader) {
                 BlastHit result = new BlastHit(line, qMap, qType, this.type);
+                count++;
                 if (parms.acceptable(result))
                     retVal.add(result);
             }
+            log.info("{} results from BLAST, {} returned.", count, retVal.size());
         }
-        log.info("{} results returned.", retVal.size());
         // Clean up the process.
         int exitCode = blastProcess.waitFor();
         if (exitCode != 0) {

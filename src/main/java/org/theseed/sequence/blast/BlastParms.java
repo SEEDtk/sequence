@@ -139,7 +139,7 @@ public class BlastParms extends Parms implements Cloneable {
      */
     @Override
     public BlastParms clone() throws CloneNotSupportedException {
-        return this.clone();
+        return (BlastParms) super.clone();
     }
 
     /**

@@ -34,7 +34,7 @@ public class BlastHit {
     /** matching subject sequence */
     private String subjectSeq;
     /** match bit-score */
-    private int bitScore;
+    private double bitScore;
     /** identity count */
     private int numIdentical;
     /** gap count */
@@ -54,6 +54,12 @@ public class BlastHit {
                                             // 0      1    2      3    4    5      6    7      8
                                               "sseq bitscore nident gaps evalue positive length";
                                             // 9    10       11     12   13     14       15
+    /** headers for output file */
+    public static final String PRINT_HEADER =
+            "q_id\tq_comment\tq_location\tq_length\t" +
+            "s_id\ts_comment\ts_location\ts_length\t" +
+            "bit_score\tn_ident\tn_gap\tn_positive\t" +
+            "e_value\talign_len\tq_sequence\ts_sequence";
 
     /**
      * Create a BLAST hit from an input line.
@@ -75,11 +81,14 @@ public class BlastHit {
         this.subjectLen = Integer.valueOf(fields[6]);
         this.subjectLoc = Location.create(pieces[0], Integer.valueOf(fields[7]), Integer.valueOf(fields[8]));
         this.subjectSeq = fields[9];
-        this.bitScore = Integer.valueOf(fields[10]);
+        this.bitScore = Double.valueOf(fields[10]);
         this.numIdentical = Integer.valueOf(fields[11]);
         this.numGap = Integer.valueOf(fields[12]);
         this.evalue = Double.valueOf(fields[13]);
-        this.positives = Integer.valueOf(fields[14]);
+        if (queryType == BlastDB.Type.DNA && subjectType == BlastDB.Type.DNA)
+            this.positives = 0;
+        else
+            this.positives = Integer.valueOf(fields[14]);
         this.alignLen = Integer.valueOf(fields[15]);
         this.queryType = queryType;
         this.subjectType = subjectType;
@@ -145,7 +154,7 @@ public class BlastHit {
      * @return the bit score of this match, which is the internal estimate of the quality of the match,
      * normalized with respect to the properties of the scoring system (but not the query length)
      */
-    public int getBitScore() {
+    public double getBitScore() {
         return bitScore;
     }
 
@@ -244,6 +253,19 @@ public class BlastHit {
      */
     public String getSubjectId() {
         return this.subjectLoc.getContigId();
+    }
+
+    /**
+     * @return a tab-delimited print line for this result (with no LF)
+     */
+    public String getPrintLine() {
+        return String.format("%s\t%s\t%s\t%d\t%s\t%s\t%s\t%d\t" +
+                "%4.2f\t%d\t%d\t%d\t%6.3e\t%d\t%s\t%s",
+                this.getQueryId(), this.queryDef, this.queryLoc.toString(),
+                this.queryLen, this.getSubjectId(), this.subjectDef,
+                this.subjectLoc.toString(), this.subjectLen, this.bitScore,
+                this.numIdentical, this.numGap, this.positives, this.evalue,
+                this.alignLen, this.querySeq, this.subjectSeq);
     }
 
 }
