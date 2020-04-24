@@ -10,6 +10,9 @@ import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.theseed.genome.Genome;
 import org.theseed.sequence.blast.BlastDB;
+import org.theseed.sequence.blast.DnaBlastDB;
+import org.theseed.sequence.blast.ProteinBlastDB;
+
 import org.theseed.sequence.blast.BlastHit;
 import org.theseed.sequence.blast.BlastParms;
 
@@ -40,40 +43,36 @@ public class BlastTest extends TestCase {
 
     public void testFasta() throws IOException, InterruptedException {
         File gtoFile = new File("src/test", "1313.7001.gto");
-        Genome gto = new Genome(gtoFile);
         FileUtils.cleanDirectory(tempDir);
+        Genome gto = new Genome(gtoFile);
         // Create and test a DNA database.
         File fastaFile = new File(tempDir, "temp.fna");
-        gto.saveDna(fastaFile);
-        BlastDB newBlastDb = new BlastDB(fastaFile, 11);
+        BlastDB newBlastDb = DnaBlastDB.create(fastaFile, gto);
+        assertThat(((DnaBlastDB) newBlastDb).getGeneticCode(), equalTo(11));
         String[] suffixes = new String[] { ".nhr", ".nin", ".nsq" };
         for (String suffix : suffixes) {
             File testFile = new File(tempDir, "temp.fna" + suffix);
             assertThat(testFile, aReadableFile());
         }
-        assertThat(newBlastDb.getType(), equalTo(BlastDB.Type.DNA));
-        assertThat(newBlastDb.getGeneticCode(), equalTo(11));
-        BlastDB oldBlastDb = new BlastDB(fastaFile);
-        assertThat(oldBlastDb.getType(), equalTo(BlastDB.Type.DNA));
-        assertThat(oldBlastDb.getGeneticCode(), equalTo(11));
+        BlastDB oldBlastDb = BlastDB.load(fastaFile);
+        assertThat(oldBlastDb, instanceOf(DnaBlastDB.class));
+        assertThat(((DnaBlastDB) oldBlastDb).getGeneticCode(), equalTo(11));
         // Create and test a protein database.
         File protFile = new File(tempDir, "temp.faa");
-        gto.savePegs(protFile);
-        BlastDB protBlastDb = new BlastDB(protFile, BlastDB.PROTEIN);
-        assertThat(protBlastDb.getType(), equalTo(BlastDB.Type.PROTEIN));
+        newBlastDb = ProteinBlastDB.create(protFile, gto);
         suffixes = new String[] { ".phr", ".pin", ".psq" };
         for (String suffix : suffixes) {
             File testFile = new File(tempDir, "temp.faa" + suffix);
             assertThat(testFile, aReadableFile());
         }
-        oldBlastDb = new BlastDB(protFile);
-        assertThat(oldBlastDb.getType(), equalTo(BlastDB.Type.PROTEIN));
+        oldBlastDb = BlastDB.load(protFile);
+        assertThat(oldBlastDb, instanceOf(ProteinBlastDB.class));
         // Verify that updating the fasta file causes a regen.
         File checkFile = new File(tempDir, "temp.fna.nsq");
         Thread.sleep(1000);
         gto.saveDna(fastaFile);
         assertThat(checkFile.lastModified(), lessThan(fastaFile.lastModified()));
-        oldBlastDb = new BlastDB(fastaFile);
+        oldBlastDb = BlastDB.load(fastaFile);
         assertThat(checkFile.lastModified(), greaterThanOrEqualTo(fastaFile.lastModified()));
     }
 
@@ -93,11 +92,9 @@ public class BlastTest extends TestCase {
         File g3dna = new File("src/test", "g3.fna");
         File g2Pegs = new File(tempDir, "g2.faa");
         File g2Contigs = new File(tempDir, "g2.fna");
-        g2.saveDna(g2Contigs);
-        g2.savePegs(g2Pegs);
-        BlastDB g2ContigBlast = new BlastDB(g2Contigs, 11);
+        BlastDB g2ContigBlast = DnaBlastDB.create(g2Contigs, g2);
         BlastParms parms = new BlastParms().maxE(1e-10).maxPerQuery(5).pctLenOfQuery(50);
-        List<BlastHit> results = g2ContigBlast.blastProteins(FastaInputStream.readAll(g1Pegs), parms);
+        List<BlastHit> results = g2ContigBlast.blast(new ProteinInputStream(g1Pegs), parms);
         assertThat(results.size(), equalTo(3));
         BlastHit hit = results.get(0);
         assertThat(hit.getQueryId(), equalTo("fig|47466.134.peg.336"));
@@ -132,8 +129,8 @@ public class BlastTest extends TestCase {
             assertThat(result.getEvalue(), lessThanOrEqualTo(1e-10));
             assertThat(result.getQueryPercentMatch(), greaterThanOrEqualTo(50.0));
         }
-        BlastDB g2PegBlast = new BlastDB(g2Pegs, BlastDB.PROTEIN);
-        results = g2PegBlast.blastProteins(FastaInputStream.readAll(g1Pegs), parms);
+        BlastDB g2PegBlast = ProteinBlastDB.create(g2Pegs, g2);
+        results = g2PegBlast.blast(new ProteinInputStream(g1Pegs), parms);
         assertThat(results.size(), equalTo(3));
         hit = results.get(0);
         assertThat(hit.getQueryId(), equalTo("fig|47466.134.peg.336"));
@@ -158,7 +155,7 @@ public class BlastTest extends TestCase {
         assertThat(hit.getPercentSimilarity(), closeTo(84.2, 0.1));
         assertThat(hit.getSubjectPercentMatch(), closeTo(83.5, 0.1));
         assertThat(hit.getQueryPercentMatch(), closeTo(87.1, 0.1));
-        results = g2ContigBlast.blastDna(FastaInputStream.readAll(g3dna), parms);
+        results = g2ContigBlast.blast(new DnaInputStream(g3dna), parms);
         assertThat(results.size(), equalTo(4));
         hit = results.get(0);
         assertThat(hit.getQueryId(), equalTo("fig|1685.78.peg.1985|NRBB09_1929|"));
@@ -183,7 +180,7 @@ public class BlastTest extends TestCase {
         assertThat(hit.getPercentSimilarity(), closeTo(99.3, 0.1));
         assertThat(hit.getSubjectPercentMatch(), closeTo(0.89, 0.01));
         assertThat(hit.getQueryPercentMatch(), closeTo(99.3, 0.1));
-        results = g2PegBlast.blastDna(FastaInputStream.readAll(g1dna), parms);
+        results = g2PegBlast.blast(new DnaInputStream(g1dna), parms);
         assertThat(results.size(), equalTo(3));
         hit = results.get(0);
         assertThat(hit.getQueryId(), equalTo("fig|47466.134.peg.336|EZU69_01700|"));

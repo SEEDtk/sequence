@@ -46,9 +46,9 @@ public class BlastHit {
     /** alignment length */
     private int alignLen;
     /** query sequence type */
-    private BlastDB.Type queryType;
+    private boolean queryIsProtein;
     /** subject sequence type */
-    private BlastDB.Type subjectType;
+    private boolean subjectIsProtein;
     /** required output format */
     public static final String OUT_FORMAT = "6 qseqid qlen qstart qend qseq stitle slen sstart send " +
                                             // 0      1    2      3    4    5      6    7      8
@@ -69,7 +69,7 @@ public class BlastHit {
      * @param qType		query type
      * @param sType		subject type
      */
-    public BlastHit(String line, Map<String, String> qMap, BlastDB.Type queryType, BlastDB.Type subjectType) {
+    public BlastHit(String line, Map<String, String> qMap, boolean queryIsProtein, boolean subjectIsProtein) {
         String[] fields = StringUtils.split(line, '\t');
         String qid = fields[0];
         this.queryDef = qMap.getOrDefault(qid, "");
@@ -85,13 +85,13 @@ public class BlastHit {
         this.numIdentical = Integer.valueOf(fields[11]);
         this.numGap = Integer.valueOf(fields[12]);
         this.evalue = Double.valueOf(fields[13]);
-        if (queryType == BlastDB.Type.DNA && subjectType == BlastDB.Type.DNA)
+        if (! queryIsProtein && ! subjectIsProtein)
             this.positives = 0;
         else
             this.positives = Integer.valueOf(fields[14]);
         this.alignLen = Integer.valueOf(fields[15]);
-        this.queryType = queryType;
-        this.subjectType = subjectType;
+        this.queryIsProtein = queryIsProtein;
+        this.subjectIsProtein = subjectIsProtein;
     }
 
     /**
@@ -193,7 +193,7 @@ public class BlastHit {
         double retVal = 0.0;
         if (this.queryLen > 0) {
             double qLen = (double) this.queryLen;
-            if (this.queryType == BlastDB.Type.DNA && this.subjectType == BlastDB.Type.PROTEIN)
+            if (! queryIsProtein && subjectIsProtein)
                 qLen /= 3.0;
             retVal = (this.positives + this.numIdentical) * 100 / qLen;
         }
@@ -207,7 +207,7 @@ public class BlastHit {
         double retVal = 0.0;
         if (this.subjectLen > 0) {
             double sLen = (double) this.subjectLen;
-            if (this.subjectType == BlastDB.Type.DNA && this.queryType == BlastDB.Type.PROTEIN)
+            if (! subjectIsProtein && queryIsProtein)
                 sLen /= 3.0;
             retVal = (this.positives + this.numIdentical) * 100 / sLen;
         }
