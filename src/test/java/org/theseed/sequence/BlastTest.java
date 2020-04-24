@@ -45,19 +45,21 @@ public class BlastTest extends TestCase {
         // Create and test a DNA database.
         File fastaFile = new File(tempDir, "temp.fna");
         gto.saveDna(fastaFile);
-        BlastDB newBlastDb = new BlastDB(fastaFile, BlastDB.Type.DNA);
+        BlastDB newBlastDb = new BlastDB(fastaFile, 11);
         String[] suffixes = new String[] { ".nhr", ".nin", ".nsq" };
         for (String suffix : suffixes) {
             File testFile = new File(tempDir, "temp.fna" + suffix);
             assertThat(testFile, aReadableFile());
         }
         assertThat(newBlastDb.getType(), equalTo(BlastDB.Type.DNA));
+        assertThat(newBlastDb.getGeneticCode(), equalTo(11));
         BlastDB oldBlastDb = new BlastDB(fastaFile);
         assertThat(oldBlastDb.getType(), equalTo(BlastDB.Type.DNA));
+        assertThat(oldBlastDb.getGeneticCode(), equalTo(11));
         // Create and test a protein database.
         File protFile = new File(tempDir, "temp.faa");
         gto.savePegs(protFile);
-        BlastDB protBlastDb = new BlastDB(protFile, BlastDB.Type.PROTEIN);
+        BlastDB protBlastDb = new BlastDB(protFile, BlastDB.PROTEIN);
         assertThat(protBlastDb.getType(), equalTo(BlastDB.Type.PROTEIN));
         suffixes = new String[] { ".phr", ".pin", ".psq" };
         for (String suffix : suffixes) {
@@ -76,10 +78,10 @@ public class BlastTest extends TestCase {
     }
 
     public void testBlastParms() {
-        BlastParms parms = new BlastParms().set("-a").set("-b", 100).db_gen_code(11).maxE(1e-20)
+        BlastParms parms = new BlastParms().set("-a").set("-b", 100).db_gencode(11).maxE(1e-20)
                 .maxPerQuery(5).minPercent(50).num_threads(6).query_gen_code(4).pctLenOfQuery(0.5);
         assertThat(parms.getPctLenOfQuery(), equalTo(0.5));
-        assertThat(parms.get(), contains("-a", "-b", "100", "-db_gen_code", "11", "-evalue", "1.0E-20",
+        assertThat(parms.get(), contains("-a", "-b", "100", "-db_gencode", "11", "-evalue", "1.0E-20",
                 "-max_target_seqs", "5","-num_threads", "6", "-perc_identity", "50", "-query_genetic_code", "4"));
 
     }
@@ -93,7 +95,7 @@ public class BlastTest extends TestCase {
         File g2Contigs = new File(tempDir, "g2.fna");
         g2.saveDna(g2Contigs);
         g2.savePegs(g2Pegs);
-        BlastDB g2ContigBlast = new BlastDB(g2Contigs, BlastDB.Type.DNA);
+        BlastDB g2ContigBlast = new BlastDB(g2Contigs, 11);
         BlastParms parms = new BlastParms().maxE(1e-10).maxPerQuery(5).pctLenOfQuery(50);
         List<BlastHit> results = g2ContigBlast.blastProteins(FastaInputStream.readAll(g1Pegs), parms);
         assertThat(results.size(), equalTo(3));
@@ -130,7 +132,7 @@ public class BlastTest extends TestCase {
             assertThat(result.getEvalue(), lessThanOrEqualTo(1e-10));
             assertThat(result.getQueryPercentMatch(), greaterThanOrEqualTo(50.0));
         }
-        BlastDB g2PegBlast = new BlastDB(g2Pegs, BlastDB.Type.PROTEIN);
+        BlastDB g2PegBlast = new BlastDB(g2Pegs, BlastDB.PROTEIN);
         results = g2PegBlast.blastProteins(FastaInputStream.readAll(g1Pegs), parms);
         assertThat(results.size(), equalTo(3));
         hit = results.get(0);

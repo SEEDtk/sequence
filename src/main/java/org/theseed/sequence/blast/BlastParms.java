@@ -94,8 +94,8 @@ public class BlastParms extends Parms implements Cloneable {
      *
      * @param gc	genetic code to use to translate database sequences
      */
-    public BlastParms db_gen_code(int gc) {
-        return this.set("-db_gen_code", gc);
+    public BlastParms db_gencode(int gc) {
+        return this.set("-db_gencode", gc);
     }
 
     /**
@@ -138,8 +138,12 @@ public class BlastParms extends Parms implements Cloneable {
      * @return a copy of this object.
      */
     @Override
-    public BlastParms clone() throws CloneNotSupportedException {
-        return (BlastParms) super.clone();
+    public BlastParms clone() {
+        BlastParms retVal = new BlastParms();
+        this.copyValues(retVal);
+        retVal.pctLenOfQuery = this.pctLenOfQuery;
+        retVal.pctLenOfSubject = this.pctLenOfSubject;
+        return retVal;
     }
 
     /**

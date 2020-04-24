@@ -15,6 +15,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.io.LineReader;
+import org.theseed.io.MarkerFile;
 import org.theseed.sequence.FastaOutputStream;
 import org.theseed.sequence.Sequence;
 
@@ -72,23 +73,28 @@ public class BlastDB {
     private File dbFile;
     /** type of the blast database */
     private Type type;
+    /** genetic code for DNA database */
+    private int geneticCode;
 
+    /** genetic code for protein database */
+    public static final int PROTEIN = 0;
 
     /**
      * Create a blast database from a FASTA file.  The database support files will be put in
      * the same directory.
      *
      * @param fastaFile		the FASTA file to be used
+     * @param geneticCode	genetic code, or 0 for a protein database
      *
      * @throws IOException
      * @throws InterruptedException
      */
-    public BlastDB(File fastaFile, Type dbType) throws IOException, InterruptedException {
+    public BlastDB(File fastaFile, int geneticCode) throws IOException, InterruptedException {
         this.dbFile = fastaFile;
-        this.type = dbType;
+        this.type = (geneticCode == 0 ? BlastDB.Type.PROTEIN : BlastDB.Type.DNA);
+        this.geneticCode = geneticCode;
         this.createDb();
     }
-
 
     /**
      * Create a blast database for a FASTA file.  This should only be used for blast databases
@@ -107,6 +113,7 @@ public class BlastDB {
             if (testFile.exists()) {
                 log.info("Using DNA BLAST database {}.", fastaFile);
                 this.type = Type.DNA;
+                this.geneticCode = MarkerFile.readInt(new File(fastaFile.getPath() + ".gc"));
             } else {
                 throw new FileNotFoundException("No support files found for " + fastaFile + ".");
             }
@@ -142,6 +149,9 @@ public class BlastDB {
                 log.error("Failing makeBlastDB command with exit code {} was {}.", exitCode, commandString);
                 throw new RuntimeException("Exit code " + exitCode + " from BlastDB creation.");
             }
+            // Store the genetic code if this is a DNA database.
+            if (this.type == BlastDB.Type.DNA)
+                MarkerFile.write(new File(this.dbFile.getPath() + ".gc"), this.geneticCode);
             log.info("Blast database created.");
         }
     }
@@ -151,6 +161,13 @@ public class BlastDB {
      */
     public Type getType() {
         return type;
+    }
+
+    /**
+     * @return the genetic code (0 for a protein database)
+     */
+    public int getGeneticCode() {
+        return this.geneticCode;
     }
 
     /**
@@ -168,7 +185,9 @@ public class BlastDB {
     public List<BlastHit> blastProteins(List<Sequence> proteins, BlastParms parms)
             throws CloneNotSupportedException, IOException, InterruptedException {
         String blastProgram = this.type.getProteinBlaster();
-        List<BlastHit> retVal = this.runBlast(blastProgram, proteins, parms, Type.PROTEIN);
+        BlastParms parms2 = parms.clone();
+        if (this.geneticCode != 0) parms2.db_gencode(this.geneticCode);
+        List<BlastHit> retVal = this.runBlast(blastProgram, proteins, parms2, Type.PROTEIN);
         return retVal;
     }
 
@@ -187,7 +206,7 @@ public class BlastDB {
     public List<BlastHit> blastDna(List<Sequence> contigs, BlastParms parms)
             throws CloneNotSupportedException, IOException, InterruptedException {
         String blastProgram = this.type.getDnaBlaster();
-        List<BlastHit> retVal = this.runBlast(blastProgram, contigs, parms, Type.DNA);
+        List<BlastHit> retVal = this.runBlast(blastProgram, contigs, parms.clone(), Type.DNA);
         return retVal;
     }
 
@@ -196,7 +215,7 @@ public class BlastDB {
      *
      * @param blastProgram	name of the BLAST program to run
      * @param seqs			list of query sequences
-     * @param parms			user-specified blast parameters
+     * @param myParms			current blast parameters
      * @param qType			query sequence type
      *
      * @return a list of BlastHit objects representing the hits
@@ -205,11 +224,10 @@ public class BlastDB {
      * @throws IOException
      * @throws InterruptedException
      */
-    private List<BlastHit> runBlast(String blastProgram, List<Sequence> seqs, BlastParms parms, Type qType)
+    private List<BlastHit> runBlast(String blastProgram, List<Sequence> seqs, BlastParms myParms, Type qType)
             throws CloneNotSupportedException, IOException, InterruptedException {
         List<BlastHit> retVal = new ArrayList<BlastHit>();
         // Set up the parameters and form the command.
-        BlastParms myParms = parms.clone();
         myParms.set("-outfmt", BlastHit.OUT_FORMAT);
         myParms.set("-db", this.dbFile.getAbsolutePath());
         List<String> command = new ArrayList<String>();
@@ -236,7 +254,7 @@ public class BlastDB {
             for (String line : blastReader) {
                 BlastHit result = new BlastHit(line, qMap, qType, this.type);
                 count++;
-                if (parms.acceptable(result))
+                if (myParms.acceptable(result))
                     retVal.add(result);
             }
             log.info("{} results from BLAST, {} returned.", count, retVal.size());
