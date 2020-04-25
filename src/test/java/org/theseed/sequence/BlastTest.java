@@ -6,6 +6,7 @@ package org.theseed.sequence;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -98,6 +99,7 @@ public class BlastTest extends TestCase {
         File g2Contigs = new File(tempDir, "g2.fna");
         BlastDB g2ContigBlast = DnaBlastDB.create(g2Contigs, g2);
         BlastParms parms = new BlastParms().maxE(1e-10).maxPerQuery(5).pctLenOfQuery(50);
+        List<BlastHit> sortTest = new ArrayList<BlastHit>(50);
         List<BlastHit> results = g2ContigBlast.blast(new ProteinInputStream(g1Pegs), parms);
         assertThat(results.size(), equalTo(3));
         BlastHit hit = results.get(0);
@@ -134,6 +136,7 @@ public class BlastTest extends TestCase {
             assertThat(result.getEvalue(), lessThanOrEqualTo(1e-10));
             assertThat(result.getQueryPercentMatch(), greaterThanOrEqualTo(50.0));
         }
+        sortTest.addAll(results);
         BlastDB g2PegBlast = ProteinBlastDB.create(g2Pegs, g2);
         results = g2PegBlast.blast(new ProteinInputStream(g1Pegs), parms);
         assertThat(results.size(), equalTo(3));
@@ -161,6 +164,7 @@ public class BlastTest extends TestCase {
         assertThat(hit.getPercentSimilarity(), closeTo(84.2, 0.1));
         assertThat(hit.getSubjectPercentMatch(), closeTo(83.5, 0.1));
         assertThat(hit.getQueryPercentMatch(), closeTo(87.1, 0.1));
+        sortTest.addAll(results);
         results = g2ContigBlast.blast(new DnaInputStream(g3dna), parms);
         assertThat(results.size(), equalTo(4));
         hit = results.get(0);
@@ -187,6 +191,7 @@ public class BlastTest extends TestCase {
         assertThat(hit.getPercentSimilarity(), closeTo(99.3, 0.1));
         assertThat(hit.getSubjectPercentMatch(), closeTo(0.89, 0.01));
         assertThat(hit.getQueryPercentMatch(), closeTo(99.3, 0.1));
+        sortTest.addAll(results);
         results = g2PegBlast.blast(new DnaInputStream(g1dna), parms);
         assertThat(results.size(), equalTo(3));
         hit = results.get(0);
@@ -213,6 +218,16 @@ public class BlastTest extends TestCase {
         assertThat(hit.getPercentSimilarity(), closeTo(84.2, 0.1));
         assertThat(hit.getSubjectPercentMatch(), closeTo(83.5, 0.1));
         assertThat(hit.getQueryPercentMatch(), closeTo(86.8, 0.1));
+        // Test sorting by query location.
+        sortTest.addAll(results);
+        Comparator<BlastHit> compare = new BlastHit.ByQueryLoc();
+        sortTest.sort(compare);
+        for (int i = 1; i < sortTest.size(); i++) {
+            BlastHit prev = sortTest.get(i-1);
+            BlastHit curr = sortTest.get(i);
+            assertThat(compare.compare(prev, curr), not(equalTo(0)));
+            assertThat(prev.getQueryLoc(), lessThanOrEqualTo(curr.getQueryLoc()));
+        }
     }
 
     /**

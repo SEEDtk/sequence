@@ -4,6 +4,7 @@
 package org.theseed.sequence.blast;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +19,36 @@ import org.theseed.locations.Location;
  *
  */
 public class BlastHit {
+
+    /**
+     * Comparator for comparing blast hits by location in the query sequence
+     * @author parrello
+     *
+     */
+    public static class ByQueryLoc implements Comparator<BlastHit> {
+
+        @Override
+        public int compare(BlastHit o1, BlastHit o2) {
+            int retVal = o1.getQueryLoc().compareTo(o2.getQueryLoc());
+            if (retVal == 0) {
+                retVal = o1.getSubjectId().compareTo(o2.getSubjectId());
+                if (retVal == 0) {
+                    retVal = o2.getNumSimilar() - o1.getNumSimilar();
+                    if (retVal == 0) {
+                        retVal = Double.compare(o1.getEvalue(), o2.getEvalue());
+                        if (retVal == 0) {
+                            retVal = o2.getNumIdentical() - o1.getNumIdentical();
+                            if (retVal == 0) {
+                                retVal = o1.getSubjectLoc().compareTo(o2.getSubjectLoc());
+                            }
+                        }
+                    }
+                }
+            }
+            return retVal;
+        }
+
+    }
 
     // FIELDS
     /** query sequence definition (comment) */
