@@ -5,10 +5,14 @@ package org.theseed.sequence;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
 import org.theseed.genome.Genome;
+import org.theseed.io.LineReader;
 import org.theseed.sequence.blast.BlastDB;
 import org.theseed.sequence.blast.DnaBlastDB;
 import org.theseed.sequence.blast.ProteinBlastDB;
@@ -109,6 +113,7 @@ public class BlastTest extends TestCase {
         assertThat(hit.getNumIdentical(), equalTo(117));
         assertThat(hit.getNumGap(), equalTo(38));
         assertThat(hit.getPositives(), equalTo(176));
+        assertThat(hit.getNumSimilar(), equalTo(293));
         assertThat(hit.getEvalue(), closeTo(9.09e-56, 1e-58));
         assertThat(hit.getAlignLen(), equalTo(344));
         assertThat(hit.getQuerySeq().length(), equalTo(344));
@@ -145,6 +150,7 @@ public class BlastTest extends TestCase {
         assertThat(hit.getNumIdentical(), equalTo(113));
         assertThat(hit.getNumGap(), equalTo(37));
         assertThat(hit.getPositives(), equalTo(170));
+        assertThat(hit.getNumSimilar(), equalTo(283));
         assertThat(hit.getEvalue(), closeTo(9.99e-59, 1e-61));
         assertThat(hit.getAlignLen(), equalTo(336));
         assertThat(hit.getQuerySeq().length(), equalTo(336));
@@ -170,6 +176,7 @@ public class BlastTest extends TestCase {
         assertThat(hit.getNumIdentical(), equalTo(1013));
         assertThat(hit.getNumGap(), equalTo(0));
         assertThat(hit.getPositives(), equalTo(0));
+        assertThat(hit.getNumSimilar(), equalTo(1013));
         assertThat(hit.getEvalue(), closeTo(0, 1e-60));
         assertThat(hit.getAlignLen(), equalTo(1020));
         assertThat(hit.getQuerySeq().length(), equalTo(1020));
@@ -195,6 +202,7 @@ public class BlastTest extends TestCase {
         assertThat(hit.getNumIdentical(), equalTo(113));
         assertThat(hit.getNumGap(), equalTo(37));
         assertThat(hit.getPositives(), equalTo(170));
+        assertThat(hit.getNumSimilar(), equalTo(283));
         assertThat(hit.getEvalue(), closeTo(1.10e-58, 1e-60));
         assertThat(hit.getAlignLen(), equalTo(336));
         assertThat(hit.getQuerySeq().length(), equalTo(336));
@@ -205,6 +213,43 @@ public class BlastTest extends TestCase {
         assertThat(hit.getPercentSimilarity(), closeTo(84.2, 0.1));
         assertThat(hit.getSubjectPercentMatch(), closeTo(83.5, 0.1));
         assertThat(hit.getQueryPercentMatch(), closeTo(86.8, 0.1));
+    }
+
+    /**
+     * test the result sort
+     * @throws IOException
+     */
+    public void testResultSort() throws IOException {
+        List<BlastHit> results0 = new ArrayList<BlastHit>(15);
+        Map<String, String> qMap = new HashMap<String, String>();
+        qMap.put("q1", "qtitle 1");
+        qMap.put("q2", "qtitle 2");
+        try (LineReader testStream = new LineReader(new File("src/test", "results.txt"))) {
+            for (String line : testStream) {
+                BlastHit result = new BlastHit(line, qMap, true, true);
+                results0.add(result);
+            }
+        }
+        Map<String, List<BlastHit>> sortMap = BlastHit.sort(results0);
+        List<BlastHit> results = sortMap.get("q1");
+        assertThat(results.size(), equalTo(4));
+        assertThat(results.get(0).getSubjectId(), equalTo("s2"));
+        assertThat(results.get(1).getSubjectId(), equalTo("s3"));
+        assertThat(results.get(2).getSubjectId(), equalTo("s1"));
+        assertThat(results.get(2).getEvalue(), closeTo(4e-13, 1e-15));
+        assertThat(results.get(3).getSubjectId(), equalTo("s4"));
+        results = sortMap.get("q2");
+        assertThat(results.size(), equalTo(2));
+        assertThat(results.get(0).getSubjectId(), equalTo("s1"));
+        assertThat(results.get(1).getSubjectId(), equalTo("s5"));
+        for (Map.Entry<String, List<BlastHit>> entry : sortMap.entrySet()) {
+            List<BlastHit> list = entry.getValue();
+            for (BlastHit result : list) {
+                assertThat(result.getQueryId(), equalTo(entry.getKey()));
+                assertTrue(results0.contains(result));
+            }
+
+        }
     }
 
 }

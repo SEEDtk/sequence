@@ -3,6 +3,9 @@
  */
 package org.theseed.sequence.blast;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
@@ -92,6 +95,46 @@ public class BlastHit {
         this.alignLen = Integer.valueOf(fields[15]);
         this.queryIsProtein = queryIsProtein;
         this.subjectIsProtein = subjectIsProtein;
+    }
+
+    /**
+     * Sort a list of blast hits by query sequence ID, and map each such ID to a list of
+     * the results that represent matches.  For each subject match, only keep the longest.
+     *
+     * @param results	list of BLAST results to sort
+     *
+     * @return a map from each query ID to a list of the longest match for each subject
+     */
+    public static Map<String, List<BlastHit>> sort(List<BlastHit> results) {
+        Map<String, List<BlastHit>> retVal = new HashMap<String, List<BlastHit>>(results.size());
+        for (BlastHit result : results) {
+            String queryId = result.getQueryId();
+            List<BlastHit> matches = retVal.get(queryId);
+            if (matches == null) {
+                matches = new ArrayList<BlastHit>(5);
+                matches.add(result);
+                retVal.put(queryId, matches);
+            } else {
+                // Here we need to insure this is the longest match for the result.
+                int i = 0;
+                String subjectId = result.getSubjectId();
+                boolean keep = true;
+                while (i < matches.size() && keep) {
+                    BlastHit match = matches.get(i);
+                    if (! subjectId.contentEquals(match.getSubjectId())) {
+                        i++;
+                    } else if (result.getNumIdentical() <= match.getNumIdentical()) {
+                        keep = false;
+                        i++;
+                    } else  {
+                        matches.remove(i);
+                    }
+                }
+                if (keep)
+                    matches.add(result);
+            }
+        }
+        return retVal;
     }
 
     /**
@@ -232,6 +275,13 @@ public class BlastHit {
     }
 
     /**
+     * @return the number of similar positions
+     */
+    public int getNumSimilar() {
+        return (this.numIdentical + this.positives);
+    }
+
+    /**
      * @return the percent similarity
      */
     public double getPercentSimilarity() {
@@ -266,6 +316,94 @@ public class BlastHit {
                 this.subjectLoc.toString(), this.subjectLen, this.bitScore,
                 this.numIdentical, this.numGap, this.positives, this.evalue,
                 this.alignLen, this.querySeq, this.subjectSeq);
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + alignLen;
+        long temp;
+        temp = Double.doubleToLongBits(bitScore);
+        result = prime * result + (int) (temp ^ (temp >>> 32));
+        temp = Double.doubleToLongBits(evalue);
+        result = prime * result + (int) (temp ^ (temp >>> 32));
+        result = prime * result + numGap;
+        result = prime * result + numIdentical;
+        result = prime * result + positives;
+        result = prime * result + ((queryDef == null) ? 0 : queryDef.hashCode());
+        result = prime * result + (queryIsProtein ? 1231 : 1237);
+        result = prime * result + queryLen;
+        result = prime * result + ((queryLoc == null) ? 0 : queryLoc.hashCode());
+        result = prime * result + ((querySeq == null) ? 0 : querySeq.hashCode());
+        result = prime * result + ((subjectDef == null) ? 0 : subjectDef.hashCode());
+        result = prime * result + (subjectIsProtein ? 1231 : 1237);
+        result = prime * result + subjectLen;
+        result = prime * result + ((subjectLoc == null) ? 0 : subjectLoc.hashCode());
+        result = prime * result + ((subjectSeq == null) ? 0 : subjectSeq.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        BlastHit other = (BlastHit) obj;
+        if (alignLen != other.alignLen)
+            return false;
+        if (Double.doubleToLongBits(bitScore) != Double.doubleToLongBits(other.bitScore))
+            return false;
+        if (Double.doubleToLongBits(evalue) != Double.doubleToLongBits(other.evalue))
+            return false;
+        if (numGap != other.numGap)
+            return false;
+        if (numIdentical != other.numIdentical)
+            return false;
+        if (positives != other.positives)
+            return false;
+        if (queryDef == null) {
+            if (other.queryDef != null)
+                return false;
+        } else if (!queryDef.equals(other.queryDef))
+            return false;
+        if (queryIsProtein != other.queryIsProtein)
+            return false;
+        if (queryLen != other.queryLen)
+            return false;
+        if (queryLoc == null) {
+            if (other.queryLoc != null)
+                return false;
+        } else if (!queryLoc.equals(other.queryLoc))
+            return false;
+        if (querySeq == null) {
+            if (other.querySeq != null)
+                return false;
+        } else if (!querySeq.equals(other.querySeq))
+            return false;
+        if (subjectDef == null) {
+            if (other.subjectDef != null)
+                return false;
+        } else if (!subjectDef.equals(other.subjectDef))
+            return false;
+        if (subjectIsProtein != other.subjectIsProtein)
+            return false;
+        if (subjectLen != other.subjectLen)
+            return false;
+        if (subjectLoc == null) {
+            if (other.subjectLoc != null)
+                return false;
+        } else if (!subjectLoc.equals(other.subjectLoc))
+            return false;
+        if (subjectSeq == null) {
+            if (other.subjectSeq != null)
+                return false;
+        } else if (!subjectSeq.equals(other.subjectSeq))
+            return false;
+        return true;
     }
 
 }

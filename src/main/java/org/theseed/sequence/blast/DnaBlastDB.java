@@ -23,6 +23,8 @@ public class DnaBlastDB extends BlastDB {
     // FIELDS
     /** genetic code of this DNA blast database */
     private int geneticCode;
+    /** array of file suffixes */
+    private static final String[] SUFFIXES = new String[] { ".nin", ".nsq", ".nhr" };
 
     /**
      * Load an existing DNA blast database.
@@ -107,5 +109,11 @@ public class DnaBlastDB extends BlastDB {
     public int getGeneticCode() {
         return geneticCode;
     }
+
+    @Override
+    protected String[] getSuffixes() {
+        return SUFFIXES;
+    }
+
 
 }

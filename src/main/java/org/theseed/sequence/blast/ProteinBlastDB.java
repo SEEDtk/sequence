@@ -18,6 +18,10 @@ import org.theseed.sequence.ProteinStream;
  */
 public class ProteinBlastDB extends BlastDB {
 
+    // FIELDS
+    /** array of file suffixes */
+    private static final String[] SUFFIXES = new String[] { ".pin", ".psq", ".phr" };
+
     /**
      * Load an existing protein blast database.
      *
@@ -82,6 +86,11 @@ public class ProteinBlastDB extends BlastDB {
         BlastParms myParms = parms.clone();
         List<BlastHit> retVal = this.runBlast("blastx", contigs, myParms);
         return retVal;
+    }
+
+    @Override
+    protected String[] getSuffixes() {
+        return SUFFIXES;
     }
 
 }
