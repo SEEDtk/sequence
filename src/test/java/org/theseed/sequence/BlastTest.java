@@ -114,8 +114,8 @@ public class BlastTest extends TestCase {
         assertThat(hit.getBitScore(), closeTo(192, 0.01));
         assertThat(hit.getNumIdentical(), equalTo(117));
         assertThat(hit.getNumGap(), equalTo(38));
-        assertThat(hit.getPositives(), equalTo(176));
-        assertThat(hit.getNumSimilar(), equalTo(293));
+        assertThat(hit.getPositives(), equalTo(59));
+        assertThat(hit.getNumSimilar(), equalTo(176));
         assertThat(hit.getEvalue(), closeTo(9.09e-56, 1e-58));
         assertThat(hit.getAlignLen(), equalTo(344));
         assertThat(hit.getQuerySeq().length(), equalTo(344));
@@ -123,14 +123,15 @@ public class BlastTest extends TestCase {
         assertThat(hit.getSubjectSeq().length(), equalTo(344));
         assertThat(hit.getSubjectSeq().substring(0, 10), equalTo("RTEGNHMEHN"));
         assertThat(hit.getPercentIdentity(), closeTo(34.0, 0.5));
-        assertThat(hit.getPercentSimilarity(), closeTo(85.2, 0.1));
-        assertThat(hit.getSubjectPercentMatch(), closeTo(0.76, 0.01));
-        assertThat(hit.getQueryPercentMatch(), closeTo(90.1, 0.1));
+        assertThat(hit.getPercentSimilarity(), closeTo(51.2, 0.1));
+        assertThat(hit.getSubjectPercentMatch(), closeTo(0.46, 0.01));
+        assertThat(hit.getQueryPercentMatch(), closeTo(54.2, 0.1));
         for (BlastHit result : results) {
             assertThat(result.getQuerySeq().length(), equalTo(result.getAlignLen()));
             assertThat(result.getSubjectSeq().length(), equalTo(result.getAlignLen()));
             assertThat(result.getNumIdentical(), lessThanOrEqualTo(result.getAlignLen()));
             assertThat(result.getPositives(), lessThanOrEqualTo(result.getAlignLen()));
+            assertThat(result.getPositives(), greaterThanOrEqualTo(0));
             assertThat(result.getPositives() + result.getNumIdentical() + result.getNumGap(),
                     lessThanOrEqualTo(result.getAlignLen()));
             assertThat(result.getEvalue(), lessThanOrEqualTo(1e-10));
@@ -152,8 +153,8 @@ public class BlastTest extends TestCase {
         assertThat(hit.getBitScore(), closeTo(188, 0.01));
         assertThat(hit.getNumIdentical(), equalTo(113));
         assertThat(hit.getNumGap(), equalTo(37));
-        assertThat(hit.getPositives(), equalTo(170));
-        assertThat(hit.getNumSimilar(), equalTo(283));
+        assertThat(hit.getPositives(), equalTo(57));
+        assertThat(hit.getNumSimilar(), equalTo(170));
         assertThat(hit.getEvalue(), closeTo(9.99e-59, 1e-61));
         assertThat(hit.getAlignLen(), equalTo(336));
         assertThat(hit.getQuerySeq().length(), equalTo(336));
@@ -161,9 +162,9 @@ public class BlastTest extends TestCase {
         assertThat(hit.getSubjectSeq().length(), equalTo(336));
         assertThat(hit.getSubjectSeq().substring(0, 10), equalTo("HNVIIIGSGP"));
         assertThat(hit.getPercentIdentity(), closeTo(33.6, 0.1));
-        assertThat(hit.getPercentSimilarity(), closeTo(84.2, 0.1));
-        assertThat(hit.getSubjectPercentMatch(), closeTo(83.5, 0.1));
-        assertThat(hit.getQueryPercentMatch(), closeTo(87.1, 0.1));
+        assertThat(hit.getPercentSimilarity(), closeTo(50.6, 0.1));
+        assertThat(hit.getSubjectPercentMatch(), closeTo(50.1, 0.1));
+        assertThat(hit.getQueryPercentMatch(), closeTo(52.3, 0.1));
         sortTest.addAll(results);
         results = g2ContigBlast.blast(new DnaInputStream(g3dna), parms);
         assertThat(results.size(), equalTo(4));
@@ -206,8 +207,8 @@ public class BlastTest extends TestCase {
         assertThat(hit.getBitScore(), closeTo(188, 0.01));
         assertThat(hit.getNumIdentical(), equalTo(113));
         assertThat(hit.getNumGap(), equalTo(37));
-        assertThat(hit.getPositives(), equalTo(170));
-        assertThat(hit.getNumSimilar(), equalTo(283));
+        assertThat(hit.getPositives(), equalTo(57));
+        assertThat(hit.getNumSimilar(), equalTo(170));
         assertThat(hit.getEvalue(), closeTo(1.10e-58, 1e-60));
         assertThat(hit.getAlignLen(), equalTo(336));
         assertThat(hit.getQuerySeq().length(), equalTo(336));
@@ -215,9 +216,9 @@ public class BlastTest extends TestCase {
         assertThat(hit.getSubjectSeq().length(), equalTo(336));
         assertThat(hit.getSubjectSeq().substring(0, 10), equalTo("HNVIIIGSGP"));
         assertThat(hit.getPercentIdentity(), closeTo(33.6, 0.1));
-        assertThat(hit.getPercentSimilarity(), closeTo(84.2, 0.1));
-        assertThat(hit.getSubjectPercentMatch(), closeTo(83.5, 0.1));
-        assertThat(hit.getQueryPercentMatch(), closeTo(86.8, 0.1));
+        assertThat(hit.getPercentSimilarity(), closeTo(50.6, 0.1));
+        assertThat(hit.getSubjectPercentMatch(), closeTo(50.1, 0.1));
+        assertThat(hit.getQueryPercentMatch(), closeTo(52.1, 0.1));
         // Test sorting by query location.
         sortTest.addAll(results);
         Comparator<BlastHit> compare = new BlastHit.ByQueryLoc();

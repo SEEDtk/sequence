@@ -119,11 +119,8 @@ public class BlastHit {
         this.numIdentical = Integer.valueOf(fields[11]);
         this.numGap = Integer.valueOf(fields[12]);
         this.evalue = Double.valueOf(fields[13]);
-        if (! queryIsProtein && ! subjectIsProtein)
-            this.positives = 0;
-        else
-            this.positives = Integer.valueOf(fields[14]);
         this.alignLen = Integer.valueOf(fields[15]);
+        this.positives = Integer.valueOf(fields[14]) - this.numIdentical;
         this.queryIsProtein = queryIsProtein;
         this.subjectIsProtein = subjectIsProtein;
     }
