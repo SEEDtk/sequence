@@ -22,8 +22,6 @@ public class BlastHit {
 
     /**
      * Comparator for comparing blast hits by location in the query sequence
-     * @author parrello
-     *
      */
     public static class ByQueryLoc implements Comparator<BlastHit> {
 
