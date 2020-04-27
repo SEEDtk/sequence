@@ -221,7 +221,7 @@ public class BlastTest extends TestCase {
         assertThat(hit.getQueryPercentMatch(), closeTo(52.1, 0.1));
         // Test sorting by query location.
         sortTest.addAll(results);
-        Comparator<BlastHit> compare = new BlastHit.ByQueryLoc();
+        Comparator<BlastHit> compare = new BlastHit.ByLoc(BlastHit.QUERY);
         sortTest.sort(compare);
         for (int i = 1; i < sortTest.size(); i++) {
             BlastHit prev = sortTest.get(i-1);

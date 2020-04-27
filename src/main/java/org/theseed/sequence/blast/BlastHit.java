@@ -4,6 +4,7 @@
 package org.theseed.sequence.blast;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -21,15 +22,142 @@ import org.theseed.locations.Location;
 public class BlastHit {
 
     /**
-     * Comparator for comparing blast hits by location in the query sequence
+     * Class representing data on a sequence.  There is one of these for the query
+     * and one for the subject.
      */
-    public static class ByQueryLoc implements Comparator<BlastHit> {
+    public static class SeqData {
+        /** sequence definition (comment) */
+        private String seqDef;
+        /** total sequence length */
+        private int seqLen;
+        /** location of matching sequence */
+        private Location seqLoc;
+        /** matching sequence in alignment form */
+        private String seqAlignment;
+        /** TRUE if this is a protein sequence */
+        private boolean isProt;
+
+        /**
+         * Construct a sequence data object.
+         *
+         * @param def			definition (comment)
+         * @param len			total length
+         * @param loc			location of the matching part
+         * @param alignment		alignment string
+         * @param isProt		TRUE if this sequence is a protein
+         */
+        public SeqData(String def, int len, Location loc, String alignment, boolean isProt) {
+            this.seqDef = def;
+            this.seqLen = len;
+            this.seqLoc = loc;
+            this.seqAlignment = alignment;
+            this.isProt = isProt;
+        }
+
+        /**
+         * @return the sequence ID
+         */
+        public String getId() {
+            return this.seqLoc.getContigId();
+        }
+
+        /**
+         * @return the sequence definition (comment)
+         */
+        public String getDef() {
+            return seqDef;
+        }
+
+        /**
+         * @return the total sequence length
+         */
+        public int getLen() {
+            return seqLen;
+        }
+
+        /**
+         * @return the location of the matching part
+         */
+        public Location getLoc() {
+            return seqLoc;
+        }
+
+        /**
+         * @return the alignment string
+         */
+        public String getAlignment() {
+            return seqAlignment;
+        }
+
+        /**
+         * @return TRUE if this is a protein sequence
+         */
+        public boolean isProtein() {
+            return isProt;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + ((seqDef == null) ? 0 : seqDef.hashCode());
+            result = prime * result + seqLen;
+            result = prime * result + ((seqLoc == null) ? 0 : seqLoc.hashCode());
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj)
+                return true;
+            if (obj == null)
+                return false;
+            if (getClass() != obj.getClass())
+                return false;
+            SeqData other = (SeqData) obj;
+            if (seqDef == null) {
+                if (other.seqDef != null)
+                    return false;
+            } else if (!seqDef.equals(other.seqDef))
+                return false;
+            if (seqLen != other.seqLen)
+                return false;
+            if (seqLoc == null) {
+                if (other.seqLoc != null)
+                    return false;
+            } else if (!seqLoc.equals(other.seqLoc))
+                return false;
+            return true;
+        }
+
+    }
+
+    /**
+     * Comparator for comparing blast hits by location in a target sequence
+     */
+    public static class ByLoc implements Comparator<BlastHit> {
+
+        /** type to sort on */
+        int type;
+        /** other type */
+        int other;
+
+        /**
+         * Construct a comparator to sort by the location in a target sequence,
+         * and then by the ID of the other sequence.
+         *
+         * @param t		type whose location is to be sorted on (query or subject)
+         */
+        public ByLoc(int t) {
+            this.type = t;
+            this.other = 1 - t;
+        }
 
         @Override
         public int compare(BlastHit o1, BlastHit o2) {
-            int retVal = o1.getQueryLoc().compareTo(o2.getQueryLoc());
+            int retVal = o1.seqs[type].getLoc().compareTo(o2.seqs[type].getLoc());
             if (retVal == 0) {
-                retVal = o1.getSubjectId().compareTo(o2.getSubjectId());
+                retVal = o1.seqs[other].getId().compareTo(o2.seqs[other].getId());
                 if (retVal == 0) {
                     retVal = o2.getNumSimilar() - o1.getNumSimilar();
                     if (retVal == 0) {
@@ -37,7 +165,7 @@ public class BlastHit {
                         if (retVal == 0) {
                             retVal = o2.getNumIdentical() - o1.getNumIdentical();
                             if (retVal == 0) {
-                                retVal = o1.getSubjectLoc().compareTo(o2.getSubjectLoc());
+                                retVal = o1.seqs[other].getLoc().compareTo(o2.seqs[other].getLoc());
                             }
                         }
                     }
@@ -49,22 +177,12 @@ public class BlastHit {
     }
 
     // FIELDS
-    /** query sequence definition (comment) */
-    private String queryDef;
-    /** total query sequence length */
-    private int queryLen;
-    /** location of matching query sequence */
-    private Location queryLoc;
-    /** matching query sequence */
-    private String querySeq;
-    /** subject sequence definition (comment) */
-    private String subjectDef;
-    /** total subject sequence length */
-    private int subjectLen;
-    /** location of matching subject sequence */
-    private Location subjectLoc;
-    /** matching subject sequence */
-    private String subjectSeq;
+    /** index of the query sequence data */
+    public static final int QUERY = 0;
+    /** index of the subject sequence data */
+    public static final int SUBJECT = 1;
+    /** sequence data for both sequences */
+    private SeqData[] seqs;
     /** match bit-score */
     private double bitScore;
     /** identity count */
@@ -77,10 +195,6 @@ public class BlastHit {
     private int positives;
     /** alignment length */
     private int alignLen;
-    /** query sequence type */
-    private boolean queryIsProtein;
-    /** subject sequence type */
-    private boolean subjectIsProtein;
     /** required output format */
     public static final String OUT_FORMAT = "6 qseqid qlen qstart qend qseq stitle slen sstart send " +
                                             // 0      1    2      3    4    5      6    7      8
@@ -102,25 +216,26 @@ public class BlastHit {
      * @param sType		subject type
      */
     public BlastHit(String line, Map<String, String> qMap, boolean queryIsProtein, boolean subjectIsProtein) {
+        // Split the input line into fields.
         String[] fields = StringUtils.split(line, '\t');
+        // Get the query ID and parse the subject title into ID and comment.
         String qid = fields[0];
-        this.queryDef = qMap.getOrDefault(qid, "");
-        this.queryLen = Integer.valueOf(fields[1]);
-        this.queryLoc = Location.create(qid, Integer.valueOf(fields[2]), Integer.valueOf(fields[3]));
-        this.querySeq = fields[4];
         String[] pieces = StringUtils.split(fields[5], " ", 2);
-        this.subjectDef = pieces[1];
-        this.subjectLen = Integer.valueOf(fields[6]);
-        this.subjectLoc = Location.create(pieces[0], Integer.valueOf(fields[7]), Integer.valueOf(fields[8]));
-        this.subjectSeq = fields[9];
+        // Build the sequence data objects.
+        this.seqs = new SeqData[] {
+                new SeqData(qMap.getOrDefault(qid, ""), Integer.valueOf(fields[1]),
+                        Location.create(qid, Integer.valueOf(fields[2]), Integer.valueOf(fields[3])),
+                        fields[4], queryIsProtein),
+                new SeqData(pieces[1], Integer.valueOf(fields[6]),
+                        Location.create(pieces[0], Integer.valueOf(fields[7]), Integer.valueOf(fields[8])),
+                        fields[9], subjectIsProtein)
+        };
         this.bitScore = Double.valueOf(fields[10]);
         this.numIdentical = Integer.valueOf(fields[11]);
         this.numGap = Integer.valueOf(fields[12]);
         this.evalue = Double.valueOf(fields[13]);
         this.alignLen = Integer.valueOf(fields[15]);
         this.positives = Integer.valueOf(fields[14]) - this.numIdentical;
-        this.queryIsProtein = queryIsProtein;
-        this.subjectIsProtein = subjectIsProtein;
     }
 
     /**
@@ -164,59 +279,68 @@ public class BlastHit {
     }
 
     /**
+     * @return the sequence data for the sequence of the specified type
+     *
+     * @param type	type of data-- QUERY or SUBJECT
+     */
+    public SeqData getData(int type) {
+        return seqs[type];
+    }
+
+    /**
      * @return the query sequence description (comment)
      */
     public String getQueryDef() {
-        return queryDef;
+        return seqs[QUERY].getDef();
     }
 
     /**
      * @return the total length of the query sequence
      */
     public int getQueryLen() {
-        return queryLen;
+        return seqs[QUERY].getLen();
     }
 
     /**
      * @return the location of the matching portion of the query sequence
      */
     public Location getQueryLoc() {
-        return queryLoc;
+        return seqs[QUERY].getLoc();
     }
 
     /**
      * @return the matching portion of the query sequence, in alignment format
      */
     public String getQuerySeq() {
-        return querySeq;
+        return seqs[QUERY].getAlignment();
     }
 
     /**
      * @return the subject sequence description (comment)
      */
     public String getSubjectDef() {
-        return subjectDef;
+        return seqs[SUBJECT].getDef();
     }
 
     /**
      * @return the total length of the subject sequence
      */
     public int getSubjectLen() {
-        return subjectLen;
+        return seqs[SUBJECT].getLen();
     }
 
     /**
      * @return the location of the matching portion of the subject sequence
      */
     public Location getSubjectLoc() {
-        return subjectLoc;
+        return seqs[SUBJECT].getLoc();
     }
 
     /**
      * @return the matching portion of the subject sequence, in alignment format
      */
     public String getSubjectSeq() {
-        return subjectSeq;
+        return seqs[SUBJECT].getAlignment();
     }
 
     /**
@@ -256,31 +380,33 @@ public class BlastHit {
     }
 
     /**
+     * @return the match length as a percent of the specified sequence length
+     *
+     * @param type	denominator sequence type-- QUERY or SUBJECT
+     */
+    public double getPercentMatch(int type) {
+        double retVal = 0.0;
+        if (this.seqs[type].getLen() > 0) {
+            double dLen = (double) this.seqs[type].getLen();
+            if (! seqs[type].isProtein() && seqs[1-type].isProtein())
+                dLen /= 3.0;
+            retVal = (this.getPositives() + this.getNumIdentical()) * 100 / dLen;
+        }
+        return retVal;
+    }
+
+    /**
      * @return the match length as a percent of the query length
      */
     public double getQueryPercentMatch() {
-        double retVal = 0.0;
-        if (this.queryLen > 0) {
-            double qLen = (double) this.queryLen;
-            if (! queryIsProtein && subjectIsProtein)
-                qLen /= 3.0;
-            retVal = (this.positives + this.numIdentical) * 100 / qLen;
-        }
-        return retVal;
+        return this.getPercentMatch(QUERY);
     }
 
     /**
      * @return the match length as a percent of the subject length
      */
     public double getSubjectPercentMatch() {
-        double retVal = 0.0;
-        if (this.subjectLen > 0) {
-            double sLen = (double) this.subjectLen;
-            if (! subjectIsProtein && queryIsProtein)
-                sLen /= 3.0;
-            retVal = (this.positives + this.numIdentical) * 100 / sLen;
-        }
-        return retVal;
+        return this.getPercentMatch(SUBJECT);
     }
 
     /**
@@ -321,14 +447,14 @@ public class BlastHit {
      * @return the query sequence ID
      */
     public String getQueryId() {
-        return this.queryLoc.getContigId();
+        return this.seqs[QUERY].getLoc().getContigId();
     }
 
     /**
      * @return the subject sequence ID
      */
     public String getSubjectId() {
-        return this.subjectLoc.getContigId();
+        return this.seqs[SUBJECT].getLoc().getContigId();
     }
 
     /**
@@ -337,11 +463,12 @@ public class BlastHit {
     public String getPrintLine() {
         return String.format("%s\t%s\t%s\t%d\t%s\t%s\t%s\t%d\t" +
                 "%4.2f\t%d\t%d\t%d\t%6.3e\t%d\t%s\t%s",
-                this.getQueryId(), this.queryDef, this.queryLoc.toString(),
-                this.queryLen, this.getSubjectId(), this.subjectDef,
-                this.subjectLoc.toString(), this.subjectLen, this.bitScore,
-                this.numIdentical, this.numGap, this.positives, this.evalue,
-                this.alignLen, this.querySeq, this.subjectSeq);
+                this.getQueryId(), this.getQueryDef(), this.getQueryLoc().toString(),
+                this.getQueryLen(), this.getSubjectId(), this.getSubjectDef(),
+                this.getSubjectLoc().toString(), this.getSubjectLen(), this.getBitScore(),
+                this.getNumIdentical(), this.getNumGap(), this.getPositives(),
+                this.getEvalue(), this.getAlignLen(), this.getQuerySeq(),
+                this.getSubjectSeq());
     }
 
     @Override
@@ -357,16 +484,7 @@ public class BlastHit {
         result = prime * result + numGap;
         result = prime * result + numIdentical;
         result = prime * result + positives;
-        result = prime * result + ((queryDef == null) ? 0 : queryDef.hashCode());
-        result = prime * result + (queryIsProtein ? 1231 : 1237);
-        result = prime * result + queryLen;
-        result = prime * result + ((queryLoc == null) ? 0 : queryLoc.hashCode());
-        result = prime * result + ((querySeq == null) ? 0 : querySeq.hashCode());
-        result = prime * result + ((subjectDef == null) ? 0 : subjectDef.hashCode());
-        result = prime * result + (subjectIsProtein ? 1231 : 1237);
-        result = prime * result + subjectLen;
-        result = prime * result + ((subjectLoc == null) ? 0 : subjectLoc.hashCode());
-        result = prime * result + ((subjectSeq == null) ? 0 : subjectSeq.hashCode());
+        result = prime * result + Arrays.hashCode(seqs);
         return result;
     }
 
@@ -391,45 +509,10 @@ public class BlastHit {
             return false;
         if (positives != other.positives)
             return false;
-        if (queryDef == null) {
-            if (other.queryDef != null)
-                return false;
-        } else if (!queryDef.equals(other.queryDef))
-            return false;
-        if (queryIsProtein != other.queryIsProtein)
-            return false;
-        if (queryLen != other.queryLen)
-            return false;
-        if (queryLoc == null) {
-            if (other.queryLoc != null)
-                return false;
-        } else if (!queryLoc.equals(other.queryLoc))
-            return false;
-        if (querySeq == null) {
-            if (other.querySeq != null)
-                return false;
-        } else if (!querySeq.equals(other.querySeq))
-            return false;
-        if (subjectDef == null) {
-            if (other.subjectDef != null)
-                return false;
-        } else if (!subjectDef.equals(other.subjectDef))
-            return false;
-        if (subjectIsProtein != other.subjectIsProtein)
-            return false;
-        if (subjectLen != other.subjectLen)
-            return false;
-        if (subjectLoc == null) {
-            if (other.subjectLoc != null)
-                return false;
-        } else if (!subjectLoc.equals(other.subjectLoc))
-            return false;
-        if (subjectSeq == null) {
-            if (other.subjectSeq != null)
-                return false;
-        } else if (!subjectSeq.equals(other.subjectSeq))
+        if (!Arrays.equals(seqs, other.seqs))
             return false;
         return true;
     }
+
 
 }
