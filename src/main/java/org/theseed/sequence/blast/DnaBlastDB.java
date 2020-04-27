@@ -78,6 +78,19 @@ public class DnaBlastDB extends BlastDB {
         return DnaBlastDB.create(fastaFile, genome.getGeneticCode());
     }
 
+    /**
+     * @return a new DNA blast database created from a genome's features
+     *
+     * @param fastaFile		name of the FASTA file to contain the database
+     *
+     * @throws InterruptedException
+     * @throws IOException
+     */
+    public static DnaBlastDB createFromFeatures(File fastaFile, Genome genome) throws IOException, InterruptedException {
+        genome.saveFeatures(fastaFile);
+        return DnaBlastDB.create(fastaFile, genome.getGeneticCode());
+    }
+
     @Override
     protected String getDbParm() {
         return "nucl";
