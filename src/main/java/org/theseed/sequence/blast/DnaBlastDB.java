@@ -24,7 +24,7 @@ public class DnaBlastDB extends BlastDB {
     /** genetic code of this DNA blast database */
     private int geneticCode;
     /** array of file suffixes */
-    private static final String[] SUFFIXES = new String[] { ".nin", ".nsq", ".nhr" };
+    private static final String[] SUFFIXES = new String[] { ".nin", ".nsq", ".nhr", ".gc" };
 
     /**
      * Load an existing DNA blast database.

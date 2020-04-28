@@ -83,7 +83,7 @@ public class ProteinBlastDB extends BlastDB {
 
     @Override
     public List<BlastHit> blast(DnaStream contigs, BlastParms parms) throws IOException, InterruptedException {
-        BlastParms myParms = parms.clone();
+        BlastParms myParms = parms.clone().query_gencode(contigs.getGeneticCode());
         List<BlastHit> retVal = this.runBlast("blastx", contigs, myParms);
         return retVal;
     }

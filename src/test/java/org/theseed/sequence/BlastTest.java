@@ -83,10 +83,10 @@ public class BlastTest extends TestCase {
 
     public void testBlastParms() {
         BlastParms parms = new BlastParms().set("-a").set("-b", 100).db_gencode(11).maxE(1e-20)
-                .maxPerQuery(5).minPercent(50).num_threads(6).query_gen_code(4).pctLenOfQuery(0.5);
+                .maxPerQuery(5).minPercent(50).num_threads(6).query_gencode(4).pctLenOfQuery(0.5);
         assertThat(parms.getPctLenOfQuery(), equalTo(0.5));
         assertThat(parms.get(), contains("-a", "-b", "100", "-db_gencode", "11", "-evalue", "1.0E-20",
-                "-max_target_seqs", "5","-num_threads", "6", "-perc_identity", "50", "-query_genetic_code", "4"));
+                "-max_target_seqs", "5","-num_threads", "6", "-perc_identity", "50", "-query_gencode", "4"));
 
     }
 
@@ -166,7 +166,7 @@ public class BlastTest extends TestCase {
         assertThat(hit.getSubjectPercentMatch(), closeTo(50.1, 0.1));
         assertThat(hit.getQueryPercentMatch(), closeTo(52.3, 0.1));
         sortTest.addAll(results);
-        results = g2ContigBlast.blast(new DnaInputStream(g3dna), parms);
+        results = g2ContigBlast.blast(new DnaInputStream(g3dna, 11), parms);
         assertThat(results.size(), equalTo(4));
         hit = results.get(0);
         assertThat(hit.getQueryId(), equalTo("fig|1685.78.peg.1985|NRBB09_1929|"));
@@ -193,7 +193,7 @@ public class BlastTest extends TestCase {
         assertThat(hit.getSubjectPercentMatch(), closeTo(0.89, 0.01));
         assertThat(hit.getQueryPercentMatch(), closeTo(99.3, 0.1));
         sortTest.addAll(results);
-        results = g2PegBlast.blast(new DnaInputStream(g1dna), parms);
+        results = g2PegBlast.blast(new DnaInputStream(g1dna, 11), parms);
         assertThat(results.size(), equalTo(3));
         hit = results.get(0);
         assertThat(hit.getQueryId(), equalTo("fig|47466.134.peg.336|EZU69_01700|"));

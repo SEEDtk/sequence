@@ -214,14 +214,21 @@ public abstract class BlastDB {
      * Specify that this FASTA database be deleted on exit.
      */
     public void deleteOnExit() {
-        String[] suffixes = this.getSuffixes();
         this.dbFile.deleteOnExit();
+        cleanOnExit();
+    }
+
+
+    /**
+     * Specify that this FASTA database's support files be deleted on exit.
+     */
+    public void cleanOnExit() {
+        String[] suffixes = this.getSuffixes();
         String path = this.dbFile.getPath();
         for (String suffix : suffixes) {
             File serviceFile = new File(path + suffix);
             serviceFile.deleteOnExit();
         }
-
     }
 
 

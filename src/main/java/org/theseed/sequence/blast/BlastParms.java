@@ -103,8 +103,8 @@ public class BlastParms extends Parms implements Cloneable {
      *
      * @param gc	genetic code to use to translate database sequences
      */
-    public BlastParms query_gen_code(int gc) {
-        return this.set("-query_genetic_code", gc);
+    public BlastParms query_gencode(int gc) {
+        return this.set("-query_gencode", gc);
     }
 
     /**
