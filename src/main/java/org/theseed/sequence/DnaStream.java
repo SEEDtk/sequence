@@ -74,7 +74,7 @@ public abstract class DnaStream implements SequenceStream {
      * @param source		source stream to loop through
      * @param batchSize		number of sequences to return
      */
-    public Iterator<SequenceStream> batchIterator(int batchSize) {
+    public Iterator<SequenceDataStream> batchIterator(int batchSize) {
         SequenceDataStream buffer = new DnaDataStream(batchSize, this.geneticCode);
         return new BatchStreamIterator(this, buffer, batchSize);
     }

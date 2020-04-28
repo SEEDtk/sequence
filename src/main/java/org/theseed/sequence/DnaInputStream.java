@@ -14,7 +14,7 @@ import java.util.Iterator;
  * @author Bruce Parrello
  *
  */
-public class DnaInputStream extends DnaStream {
+public class DnaInputStream extends DnaStream implements SequenceInputStream {
 
     // FIELDS
     /** input stream of sequences */
@@ -47,6 +47,11 @@ public class DnaInputStream extends DnaStream {
     @Override
     public Iterator<Sequence> iterator() {
         return inStream.iterator();
+    }
+
+    @Override
+    public void close() {
+        this.inStream.close();
     }
 
 }

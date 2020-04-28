@@ -17,7 +17,6 @@ import org.theseed.sequence.DnaInputStream;
 import org.theseed.sequence.DnaStream;
 import org.theseed.sequence.ProteinDataStream;
 import org.theseed.sequence.ProteinInputStream;
-import org.theseed.sequence.ProteinStream;
 import org.theseed.sequence.Sequence;
 
 import junit.framework.TestCase;
@@ -37,22 +36,24 @@ public class StreamTest extends TestCase {
         Genome gto = new Genome(new File("src/test", "360106.5.gto"));
         File testFile = new File("src/test", "fasta.ser");
         gto.saveDna(testFile);
-        DnaStream dnaStream = new DnaInputStream(testFile, 4);
-        assertThat(dnaStream.getGeneticCode(), equalTo(4));
         int count = 0;
-        List<Sequence> seqs = new ArrayList<Sequence>(gto.getContigCount());
-        for (Sequence contigSeq : dnaStream) {
-            String contigId = contigSeq.getLabel();
-            seqs.add(contigSeq);
-            Contig contig = gto.getContig(contigId);
-            assertThat(contigId, contig, not(nullValue()));
-            assertThat(contigId, contigSeq.getComment(), equalTo(contig.getDescription()));
-            assertThat(contigId, contigSeq.getSequence(), equalTo(contig.getSequence()));
-            count++;
+        List<Sequence> seqs = null;
+        try (DnaInputStream dnaStream = new DnaInputStream(testFile, 4)) {
+            assertThat(dnaStream.getGeneticCode(), equalTo(4));
+            seqs = new ArrayList<Sequence>(gto.getContigCount());
+            for (Sequence contigSeq : dnaStream) {
+                String contigId = contigSeq.getLabel();
+                seqs.add(contigSeq);
+                Contig contig = gto.getContig(contigId);
+                assertThat(contigId, contig, not(nullValue()));
+                assertThat(contigId, contigSeq.getComment(), equalTo(contig.getDescription()));
+                assertThat(contigId, contigSeq.getSequence(), equalTo(contig.getSequence()));
+                count++;
+            }
+            assertThat(count, equalTo(gto.getContigCount()));
         }
-        assertThat(count, equalTo(gto.getContigCount()));
         count = 0;
-        dnaStream = new DnaDataStream(seqs, 1);
+        DnaStream dnaStream = new DnaDataStream(seqs, 1);
         for (Sequence contigSeq : dnaStream) {
             assertThat(contigSeq, equalTo(seqs.get(count)));
             count++;
@@ -74,44 +75,49 @@ public class StreamTest extends TestCase {
         assertThat(batchStream.size(), equalTo(0));
         batchStream.setGeneticCode(5);
         assertThat(batchStream.getGeneticCode(), equalTo(5));
-        dnaStream = new DnaInputStream(testFile, 11);
-        Iterator<SequenceStream> iter = dnaStream.batchIterator(5);
-        count = 0;
-        while (iter.hasNext()) {
-            SequenceStream batch = iter.next();
-            assertFalse(batch.isProtein());
-            assertThat(((DnaStream) batch).getGeneticCode(), equalTo(11));
-            for (Sequence seq : batch) {
-                String contigId = seq.getLabel();
-                Contig contig = gto.getContig(contigId);
-                assertThat(contigId, contig, not(nullValue()));
-                assertThat(contigId, seq.getSequence(), equalTo(contig.getSequence()));
-                count++;
+        try (DnaInputStream dnaStream2 = new DnaInputStream(testFile, 11)) {
+            Iterator<SequenceDataStream> iter = dnaStream2.batchIterator(5);
+            count = 0;
+            while (iter.hasNext()) {
+                SequenceDataStream batch = iter.next();
+                assertFalse(batch.isProtein());
+                assertThat(batch.size(), lessThanOrEqualTo(5));
+                assertThat(((DnaStream) batch).getGeneticCode(), equalTo(11));
+                for (Sequence seq : batch) {
+                    String contigId = seq.getLabel();
+                    Contig contig = gto.getContig(contigId);
+                    assertThat(contigId, contig, not(nullValue()));
+                    assertThat(contigId, seq.getSequence(), equalTo(contig.getSequence()));
+                    count++;
+                }
             }
+            assertThat(count, equalTo(gto.getContigCount()));
         }
-        assertThat(count, equalTo(gto.getContigCount()));
     }
 
     public void testProteinStreams() throws IOException {
         Genome gto = new Genome(new File("src/test", "360106.5.gto"));
         File testFile = new File("src/test", "fasta.ser");
         gto.savePegs(testFile);
-        ProteinStream protStream = new ProteinInputStream(testFile);
+        int pegCount = 0;
         int count = 0;
-        int pegCount = gto.getPegs().size();
-        List<Sequence> seqs = new ArrayList<Sequence>(pegCount);
-        for (Sequence pegSeq : protStream) {
-            String pegId = pegSeq.getLabel();
-            Feature peg = gto.getFeature(pegId);
-            seqs.add(pegSeq);
-            assertThat(pegId, peg, not(nullValue()));
-            assertThat(pegSeq.getComment(), equalTo(peg.getFunction()));
-            assertThat(pegSeq.getSequence(), equalTo(peg.getProteinTranslation()));
-            count++;
-        }
-        assertThat(count, equalTo(pegCount));
+        List<Sequence> seqs = null;
+        try (ProteinInputStream protStream = new ProteinInputStream(testFile)) {
+            pegCount = gto.getPegs().size();
+            seqs = new ArrayList<Sequence>(pegCount);
+            for (Sequence pegSeq : protStream) {
+                String pegId = pegSeq.getLabel();
+                Feature peg = gto.getFeature(pegId);
+                seqs.add(pegSeq);
+                assertThat(pegId, peg, not(nullValue()));
+                assertThat(pegSeq.getComment(), equalTo(peg.getFunction()));
+                assertThat(pegSeq.getSequence(), equalTo(peg.getProteinTranslation()));
+                count++;
+            }
+            assertThat(count, equalTo(pegCount));
+        };
         count = 0;
-        protStream = new ProteinDataStream(seqs);
+        ProteinDataStream protStream = new ProteinDataStream(seqs);
         for (Sequence pegSeq : protStream) {
             assertThat(pegSeq, equalTo(seqs.get(count)));
             count++;
@@ -129,21 +135,23 @@ public class StreamTest extends TestCase {
         }
         batchStream.clear();
         assertThat(batchStream.size(), equalTo(0));
-        protStream = new ProteinInputStream(testFile);
-        Iterator<SequenceStream> iter = protStream.batchIterator(5);
-        count = 0;
-        while (iter.hasNext()) {
-            SequenceStream batch = iter.next();
-            assertTrue(batch.isProtein());
-            for (Sequence seq : batch) {
-                String pegId = seq.getLabel();
-                Feature peg = gto.getFeature(pegId);
-                assertThat(pegId, peg, not(nullValue()));
-                assertThat(pegId, seq.getSequence(), equalTo(peg.getProteinTranslation()));
-                count++;
+        try (ProteinInputStream protStream2 = new ProteinInputStream(testFile)) {
+            Iterator<SequenceDataStream> iter = protStream2.batchIterator(5);
+            count = 0;
+            while (iter.hasNext()) {
+                SequenceDataStream batch = iter.next();
+                assertTrue(batch.isProtein());
+                assertThat(batch.size(), lessThanOrEqualTo(5));
+                for (Sequence seq : batch) {
+                    String pegId = seq.getLabel();
+                    Feature peg = gto.getFeature(pegId);
+                    assertThat(pegId, peg, not(nullValue()));
+                    assertThat(pegId, seq.getSequence(), equalTo(peg.getProteinTranslation()));
+                    count++;
+                }
             }
+            assertThat(count, equalTo(pegCount));
         }
-        assertThat(count, equalTo(pegCount));
     }
 
 }

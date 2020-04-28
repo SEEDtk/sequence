@@ -10,7 +10,7 @@ import java.util.Iterator;
  * @author parrello
  *
  */
-public class BatchStreamIterator implements Iterator<SequenceStream> {
+public class BatchStreamIterator implements Iterator<SequenceDataStream> {
 
     // FIELDS
     /** iterator through the underlying sequence stream */
@@ -39,8 +39,8 @@ public class BatchStreamIterator implements Iterator<SequenceStream> {
     }
 
     @Override
-    public SequenceStream next() {
-        SequenceStream retVal = null;
+    public SequenceDataStream next() {
+        SequenceDataStream retVal = null;
         if (this.hasNext()) {
             // Here we have another batch.  Fill it in.
             this.batch.clear();

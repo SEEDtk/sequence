@@ -48,7 +48,7 @@ public abstract class ProteinStream implements SequenceStream {
      * @param source		source stream to loop through
      * @param batchSize		number of sequences to return
      */
-    public Iterator<SequenceStream> batchIterator(int batchSize) {
+    public Iterator<SequenceDataStream> batchIterator(int batchSize) {
         SequenceDataStream buffer = new ProteinDataStream(batchSize);
         return new BatchStreamIterator(this, buffer, batchSize);
     }

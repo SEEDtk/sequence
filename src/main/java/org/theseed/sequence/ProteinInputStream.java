@@ -14,7 +14,7 @@ import java.util.Iterator;
  * @author Bruce Parrello
  *
  */
-public class ProteinInputStream extends ProteinStream {
+public class ProteinInputStream extends ProteinStream implements SequenceInputStream {
 
     // FIELDS
     /** input stream of sequences */
@@ -43,6 +43,11 @@ public class ProteinInputStream extends ProteinStream {
     @Override
     public Iterator<Sequence> iterator() {
         return inStream.iterator();
+    }
+
+    @Override
+    public void close() {
+        this.inStream.close();
     }
 
 }

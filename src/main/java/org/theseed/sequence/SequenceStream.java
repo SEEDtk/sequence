@@ -39,6 +39,6 @@ public interface SequenceStream extends Iterable<Sequence> {
      *
      * @param batchSize		number of sequences to return per batch
      */
-    public Iterator<SequenceStream> batchIterator(int batchSize);
+    public Iterator<SequenceDataStream> batchIterator(int batchSize);
 
 }

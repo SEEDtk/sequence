@@ -10,7 +10,7 @@ import org.theseed.genome.Genome;
 import org.theseed.io.MarkerFile;
 import org.theseed.sequence.DnaInputStream;
 import org.theseed.sequence.ProteinInputStream;
-import org.theseed.sequence.SequenceStream;
+import org.theseed.sequence.SequenceInputStream;
 
 /**
  * This enumeration represents a source for sequence information.  It can be used
@@ -107,8 +107,8 @@ public enum Source {
      *
      * @throws IOException
      */
-    public SequenceStream query(File tempDir, File qFile, int gc) throws IOException {
-        SequenceStream retVal = null;
+    public SequenceInputStream query(File tempDir, File qFile, int gc) throws IOException {
+        SequenceInputStream retVal = null;
         // Insure we have a temporary storage file if we need one.
         File tempFile = null;
         Genome genome = null;
