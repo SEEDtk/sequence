@@ -30,7 +30,9 @@ public enum Source {
     /** genome feature proteins */
     pegs(true),
     /** genome feature DNA */
-    features(true);
+    features(true),
+    /** genome protein DNA */
+    pegs_dna(true);
 
     // FIELDS
     private boolean needsTempFiles;
@@ -85,6 +87,10 @@ public enum Source {
             break;
         case features:
             genome.saveFeatures(tempFile);
+            retVal = DnaBlastDB.create(tempFile, gc);
+            break;
+        case pegs_dna:
+            genome.saveFeatures(tempFile, "CDS");
             retVal = DnaBlastDB.create(tempFile, gc);
             break;
         }
@@ -144,6 +150,12 @@ public enum Source {
         case features:
             genome.saveFeatures(tempFile);
             retVal = new DnaInputStream(tempFile, genome.getGeneticCode());
+            break;
+        case pegs_dna:
+            genome.saveFeatures(tempFile, "CDS");
+            retVal = new DnaInputStream(tempFile, genome.getGeneticCode());
+            break;
+        default:
             break;
         }
         // Insure we free up the temporary file.

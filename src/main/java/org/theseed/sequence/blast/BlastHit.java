@@ -221,12 +221,13 @@ public class BlastHit {
         // Get the query ID and parse the subject title into ID and comment.
         String qid = fields[0];
         String[] pieces = StringUtils.split(fields[5], " ", 2);
+        String qDef = (pieces.length >= 2 ? pieces[1] : "");
         // Build the sequence data objects.
         this.seqs = new SeqData[] {
                 new SeqData(qMap.getOrDefault(qid, ""), Integer.valueOf(fields[1]),
                         Location.create(qid, Integer.valueOf(fields[2]), Integer.valueOf(fields[3])),
                         fields[4], queryIsProtein),
-                new SeqData(pieces[1], Integer.valueOf(fields[6]),
+                new SeqData(qDef, Integer.valueOf(fields[6]),
                         Location.create(pieces[0], Integer.valueOf(fields[7]), Integer.valueOf(fields[8])),
                         fields[9], subjectIsProtein)
         };

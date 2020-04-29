@@ -3,6 +3,8 @@
  */
 package org.theseed.sequence;
 
+import java.util.stream.Stream;
+
 /**
  * This is the interface for an in-memory sequence stream.  It allows clearing and rebuilding the stream.
  *
@@ -27,5 +29,10 @@ public interface SequenceDataStream extends SequenceStream {
      * @return the number of sequences in the stream
      */
     public int size();
+
+    /**
+     * @return a java stream of these sequences
+     */
+    public Stream<Sequence> stream();
 
 }

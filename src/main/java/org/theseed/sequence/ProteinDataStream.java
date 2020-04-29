@@ -6,6 +6,7 @@ package org.theseed.sequence;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.stream.Stream;
 
 /**
  * This is a protein stream created from an in-memory list.
@@ -63,6 +64,11 @@ public class ProteinDataStream extends ProteinStream implements SequenceDataStre
      */
     public int size() {
         return this.sequences.size();
+    }
+
+    @Override
+    public Stream<Sequence> stream() {
+        return this.sequences.stream();
     }
 
 }

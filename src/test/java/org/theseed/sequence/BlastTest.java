@@ -139,6 +139,7 @@ public class BlastTest extends TestCase {
                 assertThat(result.getQueryPercentMatch(), greaterThanOrEqualTo(50.0));
             }
             sortTest.addAll(results);
+            assertThat(g2ContigBlast.getBlastType(), equalTo("tblastn"));
         }
         BlastDB g2PegBlast = ProteinBlastDB.create(g2Pegs, g2);
         try (ProteinInputStream pStream = new ProteinInputStream(g1Pegs)) {
@@ -169,6 +170,7 @@ public class BlastTest extends TestCase {
             assertThat(hit.getSubjectPercentMatch(), closeTo(50.1, 0.1));
             assertThat(hit.getQueryPercentMatch(), closeTo(52.3, 0.1));
             sortTest.addAll(results);
+            assertThat(g2PegBlast.getBlastType(), equalTo("blastp"));
         }
         try (DnaInputStream dStream = new DnaInputStream(g3dna, 11)) {
             List<BlastHit> results = dStream.blast(g2ContigBlast, parms);
@@ -198,6 +200,7 @@ public class BlastTest extends TestCase {
             assertThat(hit.getSubjectPercentMatch(), closeTo(0.89, 0.01));
             assertThat(hit.getQueryPercentMatch(), closeTo(99.3, 0.1));
             sortTest.addAll(results);
+            assertThat(g2ContigBlast.getBlastType(), equalTo("blastn"));
         }
         try (DnaInputStream dStream = new DnaInputStream(g1dna, 11)) {
             List<BlastHit> results = dStream.blast(g2PegBlast, parms);
@@ -227,6 +230,7 @@ public class BlastTest extends TestCase {
             assertThat(hit.getSubjectPercentMatch(), closeTo(50.1, 0.1));
             assertThat(hit.getQueryPercentMatch(), closeTo(52.1, 0.1));
             sortTest.addAll(results);
+            assertThat(g2PegBlast.getBlastType(), equalTo("blastx"));
         }
         // Test sorting by query location.
         Comparator<BlastHit> compare = new BlastHit.ByLoc(BlastHit.QUERY);

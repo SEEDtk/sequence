@@ -38,6 +38,10 @@ public abstract class BlastDB {
     protected static String BLAST_PATH = System.getenv("BLAST_PATH");
     /** file name of the blast database */
     private File dbFile;
+    /** type of last BLAST run */
+    private String blastType;
+    /** parm string of last BLAST run */
+    private String blastParms;
 
     /**
      * Create a blast database for a FASTA file.  This should only be used for blast databases
@@ -148,6 +152,9 @@ public abstract class BlastDB {
     protected List<BlastHit> runBlast(String blastProgram, SequenceStream seqs, BlastParms myParms)
             throws IOException, InterruptedException {
         List<BlastHit> retVal = new ArrayList<BlastHit>();
+        // Save the command specs.
+        this.blastType = blastProgram;
+        this.blastParms = myParms.toString();
         // Set up the parameters and form the command.
         myParms.set("-outfmt", BlastHit.OUT_FORMAT);
         myParms.set("-db", this.dbFile.getAbsolutePath());
@@ -236,5 +243,21 @@ public abstract class BlastDB {
      * @return a list of the suffixes
      */
     protected abstract String[] getSuffixes();
+
+
+    /**
+     * @return the type of the last BLAST run
+     */
+    public String getBlastType() {
+        return blastType;
+    }
+
+
+    /**
+     * @return the parameter string for the last BLAST run
+     */
+    public String getBlastParms() {
+        return blastParms;
+    }
 
 }
