@@ -98,7 +98,7 @@ public enum Source {
         if (! keep) {
             if (this.needsTempFiles)
                 retVal.deleteOnExit();
-            else
+            else if (this != db)
                 retVal.cleanOnExit();
         }
         return retVal;

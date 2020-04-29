@@ -205,7 +205,7 @@ public class BlastHit {
             "q_id\tq_comment\tq_location\tq_length\t" +
             "s_id\ts_comment\ts_location\ts_length\t" +
             "bit_score\tn_ident\tn_gap\tn_positive\t" +
-            "e_value\talign_len\tq_sequence\ts_sequence";
+            "e_value\talign_len";
 
     /**
      * Create a BLAST hit from an input line.
@@ -463,13 +463,12 @@ public class BlastHit {
      */
     public String getPrintLine() {
         return String.format("%s\t%s\t%s\t%d\t%s\t%s\t%s\t%d\t" +
-                "%4.2f\t%d\t%d\t%d\t%6.3e\t%d\t%s\t%s",
+                "%4.2f\t%d\t%d\t%d\t%6.3e\t%d",
                 this.getQueryId(), this.getQueryDef(), this.getQueryLoc().toString(),
                 this.getQueryLen(), this.getSubjectId(), this.getSubjectDef(),
                 this.getSubjectLoc().toString(), this.getSubjectLen(), this.getBitScore(),
                 this.getNumIdentical(), this.getNumGap(), this.getPositives(),
-                this.getEvalue(), this.getAlignLen(), this.getQuerySeq(),
-                this.getSubjectSeq());
+                this.getEvalue(), this.getAlignLen());
     }
 
     @Override
