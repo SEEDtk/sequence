@@ -62,7 +62,7 @@ public enum Source {
             genome = new Genome(dbFile);
             gc = genome.getGeneticCode();
             if (keep)
-                tempFile = new File(tempDir, genome.getId() + this.name() + ".fa");
+                tempFile = new File(tempDir, genome.getId() + "." + this.name() + ".fa");
             else
                 tempFile = File.createTempFile("blast", ".fa", tempDir);
         }

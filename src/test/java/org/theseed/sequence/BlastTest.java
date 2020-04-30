@@ -85,8 +85,9 @@ public class BlastTest extends TestCase {
         BlastParms parms = new BlastParms().set("-a").set("-b", 100).db_gencode(11).maxE(1e-20)
                 .maxPerQuery(5).minPercent(50).num_threads(6).query_gencode(4).pctLenOfQuery(0.5);
         assertThat(parms.getPctLenOfQuery(), equalTo(0.5));
+        assertThat(parms.getPctIdentity(), equalTo(50));
         assertThat(parms.get(), contains("-a", "-b", "100", "-db_gencode", "11", "-evalue", "1.0E-20",
-                "-max_target_seqs", "5","-num_threads", "6", "-perc_identity", "50", "-query_gencode", "4"));
+                "-max_target_seqs", "5","-num_threads", "6", "-query_gencode", "4"));
 
     }
 

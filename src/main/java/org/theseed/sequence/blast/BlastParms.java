@@ -19,6 +19,8 @@ public class BlastParms extends Parms implements Cloneable {
     private double pctLenOfQuery;
     /** minimum acceptable length for a result, as a percent of the subject length */
     private double pctLenOfSubject;
+    /** minimum acceptable percent identity */
+    private double pctIdentity;
 
     /**
      * Add an option parameter.  This calls through to the super-class, but returns an
@@ -78,6 +80,7 @@ public class BlastParms extends Parms implements Cloneable {
     protected void setDefaults() {
         this.pctLenOfQuery = 0.0;
         this.pctLenOfSubject = 0.0;
+        this.pctIdentity = 0.0;
     }
 
     /**
@@ -128,10 +131,11 @@ public class BlastParms extends Parms implements Cloneable {
     /**
      * Specify the minimum percent identity.
      *
-     * @param pct
+     * @param pct	minimum percent identity
      */
-    public BlastParms minPercent(int pct) {
-        return this.set("-perc_identity", pct);
+    public BlastParms minPercent(double pct) {
+        this.pctIdentity = pct;
+        return this;
     }
 
     /**
@@ -143,6 +147,7 @@ public class BlastParms extends Parms implements Cloneable {
         this.copyValues(retVal);
         retVal.pctLenOfQuery = this.pctLenOfQuery;
         retVal.pctLenOfSubject = this.pctLenOfSubject;
+        retVal.pctIdentity = this.pctIdentity;
         return retVal;
     }
 
@@ -181,8 +186,23 @@ public class BlastParms extends Parms implements Cloneable {
      */
     public boolean acceptable(BlastHit result) {
         boolean retVal = (result.getQueryPercentMatch() >= this.pctLenOfQuery
-                && result.getSubjectPercentMatch() >= this.pctLenOfSubject);
+                && result.getSubjectPercentMatch() >= this.pctLenOfSubject
+                && result.getPercentIdentity() >= this.pctIdentity);
         return retVal;
+    }
+
+    /**
+     * @return the pctIdentity
+     */
+    public double getPctIdentity() {
+        return pctIdentity;
+    }
+
+    @Override
+    public String toString() {
+        return super.toString() + (pctLenOfQuery > 0.0 ? " --pctLenOfQuery=" + pctLenOfQuery : "") +
+                (pctLenOfSubject > 0.0 ? " --pctLenOfSubject=" + pctLenOfSubject : "") +
+                (pctIdentity > 0.0 ? " --pctIdentity=" + pctIdentity : "");
     }
 
 }
