@@ -130,6 +130,15 @@ public class BlastHit {
             return true;
         }
 
+        /**
+         * Update the alignment string.
+         *
+         * @param newAlignment	new alignment string
+         */
+        public void setAlignment(String newAlignment) {
+            this.seqAlignment = newAlignment;
+        }
+
     }
 
     /**
