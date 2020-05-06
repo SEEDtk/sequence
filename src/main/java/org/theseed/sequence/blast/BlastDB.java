@@ -7,9 +7,9 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -165,41 +165,108 @@ public abstract class BlastDB {
         // Start the BLAST.
         log.info("Running BLAST command {}.", blastProgram);
         Process blastProcess = blastCommand.start();
-        // Write the sequences to the BLAST process and save a map of sequence IDs to comments.
-        Map<String, String> qMap = new HashMap<String, String>();
-        try (FastaOutputStream queryStream = new FastaOutputStream(blastProcess.getOutputStream())) {
-            for (Sequence seq : seqs) {
-                // Store this sequence's comment in the map.
-                qMap.put(seq.getLabel(), seq.getComment());
-                // Write the sequence to the BLAST process.
-                queryStream.write(seq);
+        // Open the streams.
+        try (FastaOutputStream queryStream = new FastaOutputStream(blastProcess.getOutputStream());
+                LineReader blastReader = new LineReader(blastProcess.getInputStream());
+                LineReader logReader = new LineReader(blastProcess.getErrorStream())) {
+            // Create a hash to map sequence labels to comments.
+            Map<String, String> qMap = new ConcurrentHashMap<String, String>();
+            // Create a thread to read the blast output.
+            HitConsumer hitReader = new HitConsumer(blastReader, seqs.isProtein(), qMap,
+                    myParms, retVal);
+            hitReader.start();
+            // Create a thread to save error log messages.  Generally there are none.
+            List<String> messages = new ArrayList<String>(30);
+            ErrorQueue errorReader = new ErrorQueue(logReader, messages);
+            errorReader.start();
+            // Write the sequences to the BLAST process and save a map of sequence IDs to comments.
+                for (Sequence seq : seqs) {
+                    // Store this sequence's comment in the map.
+                    qMap.put(seq.getLabel(), seq.getComment());
+                    // Write the sequence to the BLAST process.
+                    queryStream.write(seq);
+                }
+            log.info("{} query sequences submitted.", qMap.size());
+            // Send end-of-file to terminate the BLAST process.
+            queryStream.close();
+            // Clean up the process.
+            hitReader.join();
+            errorReader.join();
+            int exitCode = blastProcess.waitFor();
+            if (exitCode != 0) {
+                // We have an error. Output the error log.
+                log.error("Output from BLAST error log follows.");
+                for (String message : messages)
+                    log.error("   {}", message);
             }
-        }
-        log.info("{} query sequences submitted.", qMap.size());
-        // Read back the results.
-        try (LineReader blastReader = new LineReader(blastProcess.getInputStream())) {
-            int count = 0;
-            for (String line : blastReader) {
-                BlastHit result = new BlastHit(line, qMap, seqs.isProtein(), this.isProtein());
-                count++;
-                if (myParms.acceptable(result))
-                    retVal.add(result);
-            }
-            log.info("{} results from BLAST, {} returned.", count, retVal.size());
-        }
-        // Clean up the process.
-        int exitCode = blastProcess.waitFor();
-        if (exitCode != 0) {
-            // We have an error. Output the error log.
-            log.error("Output from BLAST error log follows.");
-            try (LineReader logReader = new LineReader(blastProcess.getErrorStream())) {
-                for (String line : logReader)
-                    log.error("   {}", line);
-            }
-            throw new RuntimeException("Blast process failed with exit code " + exitCode);
         }
         return retVal;
     }
+
+    /**
+     * This class reads hits and creates the list of BlastHit objects.
+     */
+    private class HitConsumer extends Thread {
+
+        // FIELDS
+        private LineReader blastOutput;
+        private List<BlastHit> hitList;
+        private boolean proteinFlag;
+        private Map<String, String> qMap;
+        private BlastParms parms;
+
+        /**
+         * Construct a thread to create BLAST hits from the output stream.
+         *
+         * @param blastOutput	line reader for BLAST output
+         * @param isProtein		TRUE if the queries are protein sequences, else FALSE
+         * @param qMap			map of query sequence IDs to descriptions
+         * @param parms			current BLAST parameters
+         * @param hitList		output list for blast hit objects
+         */
+        protected HitConsumer(LineReader blastOutput, boolean isProtein, Map<String, String> qMap,
+                BlastParms parms, List<BlastHit> hitList) {
+            this.blastOutput = blastOutput;
+            this.hitList = hitList;
+            this.proteinFlag = isProtein;
+            this.qMap = qMap;
+            this.parms = parms;
+        }
+
+        @Override
+        public void run() {
+            int count = 0;
+            for (String line : blastOutput) {
+                BlastHit result = new BlastHit(line, qMap, proteinFlag, BlastDB.this.isProtein());
+                count++;
+                if (this.parms.acceptable(result))
+                    hitList.add(result);
+            }
+            log.info("{} results from BLAST, {} returned.", count, hitList.size());
+        }
+    }
+
+    /**
+     * This class reads the error log from the BLAST and saves the results.
+     */
+    private class ErrorQueue extends Thread {
+
+        // FIELDS
+        private LineReader errorStream;
+        private List<String> errorMessages;
+
+        protected ErrorQueue(LineReader errorStream, List<String> messageBuffer) {
+            this.errorMessages = messageBuffer;
+            this.errorStream = errorStream;
+        }
+
+        @Override
+        public void run() {
+            for (String line : this.errorStream)
+                errorMessages.add(line);
+        }
+    }
+
 
     /**
      * @return the file name of this database
