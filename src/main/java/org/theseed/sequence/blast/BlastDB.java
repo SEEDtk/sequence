@@ -6,6 +6,7 @@ package org.theseed.sequence.blast;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -160,6 +161,8 @@ public abstract class BlastDB {
         myParms.set("-db", this.dbFile.getAbsolutePath());
         List<String> command = new ArrayList<String>();
         command.add(new File(BLAST_PATH, blastProgram).getPath());
+        //command.add("perl");
+        //command.add("/Users/Bruce/Documents/SEEDtk/git/kernel/scripts/Test_1.pl");
         command.addAll(myParms.get());
         ProcessBuilder blastCommand = new ProcessBuilder(command);
         // Start the BLAST.
@@ -179,19 +182,13 @@ public abstract class BlastDB {
             List<String> messages = new ArrayList<String>(30);
             ErrorQueue errorReader = new ErrorQueue(logReader, messages);
             errorReader.start();
-            // Write the sequences to the BLAST process and save a map of sequence IDs to comments.
-                for (Sequence seq : seqs) {
-                    // Store this sequence's comment in the map.
-                    qMap.put(seq.getLabel(), seq.getComment());
-                    // Write the sequence to the BLAST process.
-                    queryStream.write(seq);
-                }
-            log.info("{} query sequences submitted.", qMap.size());
-            // Send end-of-file to terminate the BLAST process.
-            queryStream.close();
-            // Clean up the process.
+            // Create a thread to submit the sequences to the BLAST.
+            InputWriter inputWriter = new InputWriter(seqs, qMap, queryStream);
+            inputWriter.start();
+            // Clean up the processes.
             hitReader.join();
             errorReader.join();
+            inputWriter.join();
             int exitCode = blastProcess.waitFor();
             if (exitCode != 0) {
                 // We have an error. Output the error log.
@@ -264,6 +261,41 @@ public abstract class BlastDB {
         public void run() {
             for (String line : this.errorStream)
                 errorMessages.add(line);
+        }
+    }
+
+    /**
+     * This class writes the input data to the BLAST.
+     */
+    private class InputWriter extends Thread {
+
+        // FIELDS
+        private SequenceStream sequenceStream;
+        private FastaOutputStream bufferStream;
+        private Map<String, String> qMap;
+
+        protected InputWriter(SequenceStream in, Map<String, String> qMap, FastaOutputStream out) {
+            this.sequenceStream = in;
+            this.bufferStream = out;
+            this.qMap = qMap;
+        }
+
+        @Override
+        public void run() {
+            // Write the sequences to the BLAST process and save a map of sequence IDs to comments.
+            for (Sequence seq : sequenceStream) {
+                // Store this sequence's comment in the map.
+                qMap.put(seq.getLabel(), seq.getComment());
+                // Write the sequence to the BLAST process.
+                try {
+                    bufferStream.write(seq);
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            }
+            log.info("{} query sequences submitted.", qMap.size());
+            // Send end-of-file to terminate the BLAST process.
+            bufferStream.close();
         }
     }
 
