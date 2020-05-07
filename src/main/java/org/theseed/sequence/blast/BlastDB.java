@@ -43,6 +43,22 @@ public abstract class BlastDB {
     private String blastType;
     /** parm string of last BLAST run */
     private String blastParms;
+    /** buffer file for BLAST input */
+    private File tempFile;
+
+    /**
+     * Construct a blank BLAST database.
+     */
+    protected BlastDB() {
+        try {
+            // Create the temporary buffer file.
+            this.tempFile = File.createTempFile("temp", "fasta");
+            this.tempFile.deleteOnExit();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+
+    }
 
     /**
      * Create a blast database for a FASTA file.  This should only be used for blast databases
@@ -156,24 +172,34 @@ public abstract class BlastDB {
         // Save the command specs.
         this.blastType = blastProgram;
         this.blastParms = myParms.toString();
+        // Create a hash to map sequence labels to comments.
+        Map<String, String> qMap = new ConcurrentHashMap<String, String>();
+        // Copy the input to a temporary buffer file.  Unfortunately, this is required to
+        // get BLAST working in all environments.
+        try (FastaOutputStream queryStream = new FastaOutputStream(this.tempFile)) {
+            // Write the sequences to the temp file and save a map of IDs to comments.
+            for (Sequence seq : seqs) {
+                // Store this sequence's comment in the map.
+                qMap.put(seq.getLabel(), seq.getComment());
+                // Write the sequence to the BLAST process.
+                queryStream.write(seq);
+            }
+            queryStream.close();
+        }
         // Set up the parameters and form the command.
         myParms.set("-outfmt", BlastHit.OUT_FORMAT);
         myParms.set("-db", this.dbFile.getAbsolutePath());
         List<String> command = new ArrayList<String>();
         command.add(new File(BLAST_PATH, blastProgram).getPath());
-        //command.add("perl");
-        //command.add("/Users/Bruce/Documents/SEEDtk/git/kernel/scripts/Test_1.pl");
         command.addAll(myParms.get());
         ProcessBuilder blastCommand = new ProcessBuilder(command);
+        blastCommand.redirectInput(this.tempFile);
         // Start the BLAST.
         log.info("Running BLAST command {}.", blastProgram);
         Process blastProcess = blastCommand.start();
         // Open the streams.
-        try (FastaOutputStream queryStream = new FastaOutputStream(blastProcess.getOutputStream());
-                LineReader blastReader = new LineReader(blastProcess.getInputStream());
+        try (LineReader blastReader = new LineReader(blastProcess.getInputStream());
                 LineReader logReader = new LineReader(blastProcess.getErrorStream())) {
-            // Create a hash to map sequence labels to comments.
-            Map<String, String> qMap = new ConcurrentHashMap<String, String>();
             // Create a thread to read the blast output.
             HitConsumer hitReader = new HitConsumer(blastReader, seqs.isProtein(), qMap,
                     myParms, retVal);
@@ -182,13 +208,10 @@ public abstract class BlastDB {
             List<String> messages = new ArrayList<String>(30);
             ErrorQueue errorReader = new ErrorQueue(logReader, messages);
             errorReader.start();
-            // Create a thread to submit the sequences to the BLAST.
-            InputWriter inputWriter = new InputWriter(seqs, qMap, queryStream);
-            inputWriter.start();
-            // Clean up the processes.
+            log.info("{} query sequences submitted.", qMap.size());
+            // Clean up the process.
             hitReader.join();
             errorReader.join();
-            inputWriter.join();
             int exitCode = blastProcess.waitFor();
             if (exitCode != 0) {
                 // We have an error. Output the error log.
@@ -261,41 +284,6 @@ public abstract class BlastDB {
         public void run() {
             for (String line : this.errorStream)
                 errorMessages.add(line);
-        }
-    }
-
-    /**
-     * This class writes the input data to the BLAST.
-     */
-    private class InputWriter extends Thread {
-
-        // FIELDS
-        private SequenceStream sequenceStream;
-        private FastaOutputStream bufferStream;
-        private Map<String, String> qMap;
-
-        protected InputWriter(SequenceStream in, Map<String, String> qMap, FastaOutputStream out) {
-            this.sequenceStream = in;
-            this.bufferStream = out;
-            this.qMap = qMap;
-        }
-
-        @Override
-        public void run() {
-            // Write the sequences to the BLAST process and save a map of sequence IDs to comments.
-            for (Sequence seq : sequenceStream) {
-                // Store this sequence's comment in the map.
-                qMap.put(seq.getLabel(), seq.getComment());
-                // Write the sequence to the BLAST process.
-                try {
-                    bufferStream.write(seq);
-                } catch (IOException e) {
-                    throw new UncheckedIOException(e);
-                }
-            }
-            log.info("{} query sequences submitted.", qMap.size());
-            // Send end-of-file to terminate the BLAST process.
-            bufferStream.close();
         }
     }
 
