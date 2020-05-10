@@ -51,7 +51,7 @@ public class DnaBlastDB extends BlastDB {
      * @return a new DNA blast database.
      *
      * @param fastaFile		name of the FASTA file containing the DNA
-     * @param int			genetic code of the sequences
+     * @param geneticCode	genetic code of the sequences
      *
      * @throws InterruptedException
      * @throws IOException
@@ -64,6 +64,25 @@ public class DnaBlastDB extends BlastDB {
         retVal.createDb();
         return retVal;
     }
+
+    /**
+     * @return a new or existing protein blast database
+     *
+     * @param fastaFile		name of the fasta file containing the protein sequences
+     * @param geneticCode	genetic code of the sequences
+     *
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    public static DnaBlastDB createOrLoad(File fastaFile, int geneticCode) throws IOException, InterruptedException {
+        DnaBlastDB retVal = new DnaBlastDB();
+        retVal.setFile(fastaFile);
+        File testFile = new File(fastaFile.getPath() + ".nsq");
+        if (! testFile.exists() && testFile.lastModified() >= fastaFile.lastModified())
+            retVal.createDb();
+        return retVal;
+    }
+
 
     /**
      * @return a new DNA blast database created from a genome's contigs

@@ -50,6 +50,23 @@ public class ProteinBlastDB extends BlastDB {
     }
 
     /**
+     * @return a new or existing protein blast database
+     *
+     * @param fastaFile		name of the fasta file containing the protein sequences
+     *
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    public static ProteinBlastDB createOrLoad(File fastaFile) throws IOException, InterruptedException {
+        ProteinBlastDB retVal = new ProteinBlastDB();
+        retVal.setFile(fastaFile);
+        File testFile = new File(fastaFile.getPath() + ".psq");
+        if (! testFile.exists() && testFile.lastModified() >= fastaFile.lastModified())
+            retVal.createDb();
+        return retVal;
+    }
+
+    /**
      * @return a new protein blast database created from a genome's PEGs
      *
      * @param fastaFile		name of the fasta file to contain the protein sequences
