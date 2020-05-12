@@ -168,7 +168,6 @@ public abstract class BlastDB {
      */
     protected List<BlastHit> runBlast(String blastProgram, SequenceStream seqs, BlastParms myParms)
             throws IOException, InterruptedException {
-        List<BlastHit> retVal = new ArrayList<BlastHit>();
         // Save the command specs.
         this.blastType = blastProgram;
         this.blastParms = myParms.toString();
@@ -186,6 +185,35 @@ public abstract class BlastDB {
             }
             queryStream.close();
         }
+        log.info("Submitting {} query sequences.", qMap.size());
+        // Attach the query file as input.
+        myParms.set("-query", this.tempFile.getPath());
+        // Execute the BLAST and create the list of hits.
+        List<BlastHit> retVal = processBlast(blastProgram, myParms, qMap, seqs.isProtein());
+        // Return the result.
+        return retVal;
+    }
+
+    /**
+     * This executes a BLAST.  It is a reduced form that assumes a file is being used as the input,
+     * though the caller must know the sequence descriptions already.  It can be used for more
+     * exotic types of BLASTing that don't involve sequences.  The query file must already be
+     * specified in the parameter object.
+     *
+     * @param blastProgram		name of the BLAST program to run
+     * @param myParms			incoming parameters (will be modified)
+     * @param qMap				map of query sequence IDs to query sequence descriptions
+     * @param protsIn			TRUE if the input is protein sequences, FALSE if it is DNA
+     *
+     * @return a list of blast hits
+     *
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    protected List<BlastHit> processBlast(String blastProgram, BlastParms myParms, Map<String, String> qMap,
+            boolean protsIn) throws IOException, InterruptedException {
+        // This will be the return value.
+        List<BlastHit> retVal = new ArrayList<BlastHit>();
         // Set up the parameters and form the command.
         myParms.set("-outfmt", BlastHit.OUT_FORMAT);
         myParms.set("-db", this.dbFile.getAbsolutePath());
@@ -193,7 +221,6 @@ public abstract class BlastDB {
         command.add(new File(BLAST_PATH, blastProgram).getPath());
         command.addAll(myParms.get());
         ProcessBuilder blastCommand = new ProcessBuilder(command);
-        blastCommand.redirectInput(this.tempFile);
         // Start the BLAST.
         log.info("Running BLAST command {}.", blastProgram);
         Process blastProcess = blastCommand.start();
@@ -201,14 +228,13 @@ public abstract class BlastDB {
         try (LineReader blastReader = new LineReader(blastProcess.getInputStream());
                 LineReader logReader = new LineReader(blastProcess.getErrorStream())) {
             // Create a thread to read the blast output.
-            HitConsumer hitReader = new HitConsumer(blastReader, seqs.isProtein(), qMap,
+            HitConsumer hitReader = new HitConsumer(blastReader, protsIn, qMap,
                     myParms, retVal);
             hitReader.start();
             // Create a thread to save error log messages.  Generally there are none.
             List<String> messages = new ArrayList<String>(30);
             ErrorQueue errorReader = new ErrorQueue(logReader, messages);
             errorReader.start();
-            log.info("{} query sequences submitted.", qMap.size());
             // Clean up the process.
             hitReader.join();
             errorReader.join();

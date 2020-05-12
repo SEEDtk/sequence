@@ -6,6 +6,7 @@ package org.theseed.sequence.blast;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 import org.theseed.genome.Genome;
 import org.theseed.io.MarkerFile;
@@ -132,6 +133,25 @@ public class DnaBlastDB extends BlastDB {
     public List<BlastHit> blast(DnaStream contigs, BlastParms parms) throws IOException, InterruptedException {
         BlastParms myParms = parms.clone();
         List<BlastHit> retVal = this.runBlast("blastn", contigs, myParms);
+        return retVal;
+    }
+
+    /**
+     * Run a protein PSI-BLAST against this database.
+     *
+     * @param pssmFile	protein alignment scoring file for input
+     * @param parms		BLAST parameters
+     * @param qMap		map of query sequence IDs to descriptions
+     *
+     * @return the list of blast hits found
+     *
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    public List<BlastHit> psiBlast(File pssmFile, BlastParms parms, Map<String, String> qMap)
+            throws IOException, InterruptedException {
+        BlastParms myParms = parms.clone().set("-in_pssm", pssmFile.getPath());
+        List<BlastHit> retVal = this.processBlast("tblastn", myParms, qMap, true);
         return retVal;
     }
 
