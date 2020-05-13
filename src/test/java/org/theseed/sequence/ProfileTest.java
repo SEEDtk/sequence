@@ -16,9 +16,11 @@ import org.theseed.genome.Feature;
 import org.theseed.genome.FeatureList;
 import org.theseed.genome.Genome;
 import org.theseed.locations.Location;
+import org.theseed.sequence.blast.BlastDB;
 import org.theseed.sequence.blast.BlastHit;
 import org.theseed.sequence.blast.BlastParms;
 import org.theseed.sequence.blast.DnaBlastDB;
+import org.theseed.sequence.blast.ProteinBlastDB;
 import org.theseed.sequence.blast.ProteinProfiles;
 
 import junit.framework.TestCase;
@@ -44,7 +46,7 @@ public class ProfileTest extends TestCase {
 
     public void testPsiBlast() throws IOException, InterruptedException {
         Genome g2 = new Genome(new File("src/test", "1685.390.gto"));
-        DnaBlastDB gdb = DnaBlastDB.create(new File(tempDir, "pblast.fa"), g2);
+        BlastDB gdb = DnaBlastDB.create(new File(tempDir, "pblast.fa"), g2);
         File pFile = new File("src/test", "PhenTrnaSyntAlph.smp");
         Map<String,String> qMap = new HashMap<String, String>();
         qMap.put("PhenTrnaSyntAlph", "Phenylalanyl-tRNA synthetase alpha chain (EC 6.1.1.20)");
@@ -52,6 +54,11 @@ public class ProfileTest extends TestCase {
         List<BlastHit> results = gdb.psiBlast(pFile, parms, qMap);
         assertThat(results.size(), equalTo(1));
         Feature feat = g2.getFeature("fig|1685.390.peg.2038");
+        assertTrue(feat.getLocation().contains(results.get(0).getSubjectLoc()));
+        gdb = ProteinBlastDB.create(new File(tempDir, "pblast2.fa"), g2);
+        results = gdb.psiBlast(pFile, parms, qMap);
+        assertThat(results.size(), equalTo(1));
+        feat = g2.getFeature("fig|1685.390.peg.2038");
         assertTrue(feat.getLocation().contains(results.get(0).getSubjectLoc()));
     }
 

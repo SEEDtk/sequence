@@ -45,6 +45,8 @@ public abstract class BlastDB {
     private String blastParms;
     /** buffer file for BLAST input */
     private File tempFile;
+    /** run counter for blasting */
+    private static int runCount = 0;
 
     /**
      * Construct a blank BLAST database.
@@ -154,6 +156,21 @@ public abstract class BlastDB {
             throws IOException, InterruptedException;
 
     /**
+     * Run a protein PSI-BLAST against this database.
+     *
+     * @param pssmFile	protein alignment scoring file for input
+     * @param parms		BLAST parameters
+     * @param qMap		map of query sequence IDs to descriptions
+     *
+     * @return the list of blast hits found
+     *
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    public abstract List<BlastHit> psiBlast(File pssmFile, BlastParms parms, Map<String, String> qMap)
+            throws IOException, InterruptedException;
+
+    /**
      * Run BLAST against the specified sequences with the specified parameters.
      *
      * @param blastProgram	name of the BLAST program to run
@@ -168,9 +185,6 @@ public abstract class BlastDB {
      */
     protected List<BlastHit> runBlast(String blastProgram, SequenceStream seqs, BlastParms myParms)
             throws IOException, InterruptedException {
-        // Save the command specs.
-        this.blastType = blastProgram;
-        this.blastParms = myParms.toString();
         // Create a hash to map sequence labels to comments.
         Map<String, String> qMap = new ConcurrentHashMap<String, String>();
         // Copy the input to a temporary buffer file.  Unfortunately, this is required to
@@ -185,7 +199,7 @@ public abstract class BlastDB {
             }
             queryStream.close();
         }
-        log.info("Submitting {} query sequences.", qMap.size());
+        log.debug("Submitting {} query sequences.", qMap.size());
         // Attach the query file as input.
         myParms.set("-query", this.tempFile.getPath());
         // Execute the BLAST and create the list of hits.
@@ -212,6 +226,9 @@ public abstract class BlastDB {
      */
     protected List<BlastHit> processBlast(String blastProgram, BlastParms myParms, Map<String, String> qMap,
             boolean protsIn) throws IOException, InterruptedException {
+        // Save the command specs.
+        this.blastType = blastProgram;
+        this.blastParms = myParms.toString();
         // This will be the return value.
         List<BlastHit> retVal = new ArrayList<BlastHit>();
         // Set up the parameters and form the command.
@@ -222,7 +239,7 @@ public abstract class BlastDB {
         command.addAll(myParms.get());
         ProcessBuilder blastCommand = new ProcessBuilder(command);
         // Start the BLAST.
-        log.info("Running BLAST command {}.", blastProgram);
+        log.debug("Running BLAST command {}.", blastProgram);
         Process blastProcess = blastCommand.start();
         // Open the streams.
         try (LineReader blastReader = new LineReader(blastProcess.getInputStream());
@@ -288,7 +305,8 @@ public abstract class BlastDB {
                 if (this.parms.acceptable(result))
                     hitList.add(result);
             }
-            log.info("{} results from BLAST, {} returned.", count, hitList.size());
+            runCount++;
+            log.info("{} results from BLAST #{}, {} returned.", count, runCount, hitList.size());
         }
     }
 

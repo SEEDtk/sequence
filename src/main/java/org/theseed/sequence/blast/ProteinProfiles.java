@@ -66,13 +66,13 @@ public class ProteinProfiles {
     /**
      * @return a map listing the profile hits against each subject sequence in the specified DNA blast database
      *
-     * @param dnaDB		DNA blast database to process against the profiles
+     * @param profiler	blast database to process against the profiles
      * @param parms		BLAST parameters to use
      *
      * @throws InterruptedException
      * @throws IOException
      */
-    public Map<String, List<BlastHit>> profile(DnaBlastDB profiler, BlastParms parms) throws IOException, InterruptedException {
+    public Map<String, List<BlastHit>> profile(BlastDB profiler, BlastParms parms) throws IOException, InterruptedException {
         Map<String, List<BlastHit>> retVal = new HashMap<String, List<BlastHit>>();
         for (String role : this.qMap.keySet()) {
             // Blast this role.
@@ -85,6 +85,13 @@ public class ProteinProfiles {
             }
         }
         return retVal;
+    }
+
+    /**
+     * @return the number of profiles
+     */
+    public int size() {
+        return this.qMap.size();
     }
 
 }
