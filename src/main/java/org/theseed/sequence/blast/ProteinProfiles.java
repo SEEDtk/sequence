@@ -28,6 +28,8 @@ public class ProteinProfiles {
     private Map<String, String> qMap;
     /** directory containing the profiles */
     private File profileDir;
+    /** number of profiles hit in last run */
+    private int hitCount;
 
     /**
      * Construct a new protein profile.
@@ -74,9 +76,11 @@ public class ProteinProfiles {
      */
     public Map<String, List<BlastHit>> profile(BlastDB profiler, BlastParms parms) throws IOException, InterruptedException {
         Map<String, List<BlastHit>> retVal = new HashMap<String, List<BlastHit>>();
+        this.hitCount = 0;
         for (String role : this.qMap.keySet()) {
             // Blast this role.
             List<BlastHit> results = profiler.psiBlast(this.getFile(role), parms, this.qMap);
+            if (results.size() > 0) hitCount++;
             // Put the results in the result map.
             for (BlastHit result : results) {
                 String seqId = result.getSubjectId();
@@ -92,6 +96,13 @@ public class ProteinProfiles {
      */
     public int size() {
         return this.qMap.size();
+    }
+
+    /**
+     * @return the number of profiles hit during the last run
+     */
+    public int getHitCount() {
+        return hitCount;
     }
 
 }

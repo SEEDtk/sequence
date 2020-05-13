@@ -58,8 +58,7 @@ public class ProfileTest extends TestCase {
         gdb = ProteinBlastDB.create(new File(tempDir, "pblast2.fa"), g2);
         results = gdb.psiBlast(pFile, parms, qMap);
         assertThat(results.size(), equalTo(1));
-        feat = g2.getFeature("fig|1685.390.peg.2038");
-        assertTrue(feat.getLocation().contains(results.get(0).getSubjectLoc()));
+        assertThat(results.get(0).getSubjectId(), equalTo("fig|1685.390.peg.2038"));
     }
 
     public void testProfiles() throws IOException, InterruptedException {
@@ -69,6 +68,7 @@ public class ProfileTest extends TestCase {
         ProteinProfiles profiler = new ProteinProfiles(new File("src/test", "Profiles"));
         Map<String, List<BlastHit>> hitMap = profiler.profile(gdb, parms);
         assertThat(hitMap.size(), equalTo(6));
+        assertThat(profiler.getHitCount(), equalTo(7));
         for (String contigId : hitMap.keySet()) {
             // Get all the features on this contig.
             FeatureList pegs = g2.getContigFeatures(contigId);
