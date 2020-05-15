@@ -106,4 +106,11 @@ public class ProteinProfiles {
         return hitCount;
     }
 
+    /**
+     * @return the role map
+     */
+    public RoleMap roleMap() {
+        return this.roleMap;
+    }
+
 }
