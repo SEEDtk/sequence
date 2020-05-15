@@ -21,6 +21,10 @@ public class BlastParms extends Parms implements Cloneable {
     private double pctLenOfSubject;
     /** minimum acceptable percent identity */
     private double pctIdentity;
+    /** minimum acceptable query-scaled bit score */
+    private double minQueryBitScore;
+    /** minimum acceptable query identity fraction */
+    private double minQueryIdentity;
 
     /**
      * Add an option parameter.  This calls through to the super-class, but returns an
@@ -81,6 +85,8 @@ public class BlastParms extends Parms implements Cloneable {
         this.pctLenOfQuery = 0.0;
         this.pctLenOfSubject = 0.0;
         this.pctIdentity = 0.0;
+        this.minQueryBitScore = 0.0;
+        this.minQueryIdentity = 0.0;
     }
 
     /**
@@ -148,6 +154,8 @@ public class BlastParms extends Parms implements Cloneable {
         retVal.pctLenOfQuery = this.pctLenOfQuery;
         retVal.pctLenOfSubject = this.pctLenOfSubject;
         retVal.pctIdentity = this.pctIdentity;
+        retVal.minQueryBitScore = this.minQueryBitScore;
+        retVal.minQueryIdentity = this.minQueryIdentity;
         return retVal;
     }
 
@@ -182,12 +190,30 @@ public class BlastParms extends Parms implements Cloneable {
     }
 
     /**
+     * @param minQueryIdentity the minimum acceptable query identity to set
+     */
+    public BlastParms minQueryIdentity(double minQueryIdentity) {
+        this.minQueryIdentity = minQueryIdentity;
+        return this;
+    }
+
+    /**
+     * @param minQueryBitScore the minimum acceptable query-scaled bit score to set
+     */
+    public BlastParms minQueryBitScore(double minQueryBitScore) {
+        this.minQueryBitScore = minQueryBitScore;
+        return this;
+    }
+
+    /**
      * @return TRUE if the specified blast hit satisfies the post-processing parameters
      */
     public boolean acceptable(BlastHit result) {
         boolean retVal = (result.getQueryPercentMatch() >= this.pctLenOfQuery
                 && result.getSubjectPercentMatch() >= this.pctLenOfSubject
-                && result.getPercentIdentity() >= this.pctIdentity);
+                && result.getPercentIdentity() >= this.pctIdentity
+                && result.getQueryBitScore() >= this.minQueryBitScore
+                && result.getQueryIdentity() >= this.minQueryIdentity);
         return retVal;
     }
 
@@ -203,6 +229,20 @@ public class BlastParms extends Parms implements Cloneable {
         return super.toString() + (pctLenOfQuery > 0.0 ? " --pctLenOfQuery=" + pctLenOfQuery : "") +
                 (pctLenOfSubject > 0.0 ? " --pctLenOfSubject=" + pctLenOfSubject : "") +
                 (pctIdentity > 0.0 ? " --pctIdentity=" + pctIdentity : "");
+    }
+
+    /**
+     * @return the minQueryBitScore
+     */
+    public double getMinQueryBitScore() {
+        return minQueryBitScore;
+    }
+
+    /**
+     * @return the minQueryIdentity
+     */
+    public double getMinQueryIdentity() {
+        return minQueryIdentity;
     }
 
 }

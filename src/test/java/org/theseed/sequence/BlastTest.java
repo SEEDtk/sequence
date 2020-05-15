@@ -83,9 +83,12 @@ public class BlastTest extends TestCase {
 
     public void testBlastParms() {
         BlastParms parms = new BlastParms().set("-a").set("-b", 100).db_gencode(11).maxE(1e-20)
-                .maxPerQuery(5).minPercent(50).num_threads(6).query_gencode(4).pctLenOfQuery(0.5);
+                .maxPerQuery(5).minPercent(50).num_threads(6).query_gencode(4).pctLenOfQuery(0.5)
+                .minQueryBitScore(0.75).minQueryIdentity(0.35);
         assertThat(parms.getPctLenOfQuery(), equalTo(0.5));
         assertThat(parms.getPctIdentity(), equalTo(50.0));
+        assertThat(parms.getMinQueryBitScore(), equalTo(0.75));
+        assertThat(parms.getMinQueryIdentity(), equalTo(0.35));
         assertThat(parms.get(), contains("-a", "-b", "100", "-db_gencode", "11", "-evalue", "1.0E-20",
                 "-max_target_seqs", "5","-num_threads", "6", "-query_gencode", "4"));
 
@@ -128,6 +131,8 @@ public class BlastTest extends TestCase {
             assertThat(hit.getPercentSimilarity(), closeTo(51.2, 0.1));
             assertThat(hit.getSubjectPercentMatch(), closeTo(0.46, 0.01));
             assertThat(hit.getQueryPercentMatch(), closeTo(54.2, 0.1));
+            assertThat(hit.getQueryIdentity(), closeTo(0.36, 0.005));
+            assertThat(hit.getQueryBitScore(), closeTo(0.59, 0.001));
             for (BlastHit result : results) {
                 assertThat(result.getQuerySeq().length(), equalTo(result.getAlignLen()));
                 assertThat(result.getSubjectSeq().length(), equalTo(result.getAlignLen()));

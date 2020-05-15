@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.theseed.io.TabbedLineReader;
+import org.theseed.proteins.RoleMap;
 
 /**
  * A protein profile directory contains Psi-BLAST input files (all with suffix ".smp") plus a "_map.tbl" file.
@@ -24,8 +25,10 @@ import org.theseed.io.TabbedLineReader;
 public class ProteinProfiles {
 
     // FIELDS
-    /** protein ID to description map */
-    private Map<String, String> qMap;
+    /** role ID mapping to parse the functions */
+    private RoleMap roleMap;
+    /** cluster ID to function mapping */
+    private Map<String, String> clusterMap;
     /** directory containing the profiles */
     private File profileDir;
     /** number of profiles hit in last run */
@@ -40,29 +43,27 @@ public class ProteinProfiles {
      */
     public ProteinProfiles(File profileDir) throws IOException {
         this.profileDir = profileDir;
-        this.qMap = new HashMap<String, String>();
-        // Open the map file.
-        try (TabbedLineReader mapStream = new TabbedLineReader(new File(profileDir, "_map.tbl"), 2)) {
-            for (TabbedLineReader.Line line : mapStream) {
-                // Put the role information in the map.
-                String role = line.get(0);
-                String description = line.get(1);
-                this.qMap.put(role, description);
-                // Verify that the role file exists.
-                File roleFile = this.getFile(role);
-                if (! roleFile.canRead())
-                    throw new FileNotFoundException("Role " + role + " found in profile map but not in directory.");
-            }
+        this.roleMap = RoleMap.load(new File(profileDir, "_roles.tbl"));
+        this.clusterMap = new HashMap<String, String>();
+        try (TabbedLineReader clusterStream = new TabbedLineReader(new File(profileDir, "_map.tbl"), 2)) {
+            for (TabbedLineReader.Line line : clusterStream)
+                this.clusterMap.put(line.get(0), line.get(1));
+        }
+        // Verify that all the clusters exist.
+        for (String cluster : this.clusterMap.keySet()) {
+            File clusterFile = this.getFile(cluster);
+            if (! clusterFile.canRead())
+                throw new FileNotFoundException("Role " + cluster + " found in profile map but not in directory.");
         }
     }
 
     /**
-     * @return the file containing the profile for the specified role ID
+     * @return the file containing the profile for the specified cluster
      *
-     * @param role	role whose profile is desired
+     * @param cluster	ID of cluster whose profile is desired
      */
-    private File getFile(String role) {
-        return new File(this.profileDir, role + ".smp");
+    private File getFile(String cluster) {
+        return new File(this.profileDir, cluster + ".smp");
     }
 
     /**
@@ -77,9 +78,9 @@ public class ProteinProfiles {
     public Map<String, List<BlastHit>> profile(BlastDB profiler, BlastParms parms) throws IOException, InterruptedException {
         Map<String, List<BlastHit>> retVal = new HashMap<String, List<BlastHit>>();
         this.hitCount = 0;
-        for (String role : this.qMap.keySet()) {
+        for (String cluster : this.clusterMap.keySet()) {
             // Blast this role.
-            List<BlastHit> results = profiler.psiBlast(this.getFile(role), parms, this.qMap);
+            List<BlastHit> results = profiler.psiBlast(this.getFile(cluster), parms, this.clusterMap);
             if (results.size() > 0) hitCount++;
             // Put the results in the result map.
             for (BlastHit result : results) {
@@ -95,7 +96,7 @@ public class ProteinProfiles {
      * @return the number of profiles
      */
     public int size() {
-        return this.qMap.size();
+        return this.roleMap.size();
     }
 
     /**

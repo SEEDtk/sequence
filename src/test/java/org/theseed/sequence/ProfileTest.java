@@ -64,11 +64,10 @@ public class ProfileTest extends TestCase {
     public void testProfiles() throws IOException, InterruptedException {
         Genome g2 = new Genome(new File("src/test", "1685.390.gto"));
         DnaBlastDB gdb = DnaBlastDB.create(new File(tempDir, "pblast.fa"), g2);
-        BlastParms parms = new BlastParms().maxE(1e-10);
+        BlastParms parms = new BlastParms().maxE(1e-10).minQueryBitScore(1.5);
         ProteinProfiles profiler = new ProteinProfiles(new File("src/test", "Profiles"));
         Map<String, List<BlastHit>> hitMap = profiler.profile(gdb, parms);
-        assertThat(hitMap.size(), equalTo(6));
-        assertThat(profiler.getHitCount(), equalTo(7));
+        assertThat(hitMap.size(), equalTo(3));
         for (String contigId : hitMap.keySet()) {
             // Get all the features on this contig.
             FeatureList pegs = g2.getContigFeatures(contigId);

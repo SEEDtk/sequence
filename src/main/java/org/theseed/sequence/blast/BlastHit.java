@@ -437,6 +437,26 @@ public class BlastHit {
     }
 
     /**
+     * @return the fraction query identity
+     */
+    public double getQueryIdentity() {
+        double retVal = 0.0;
+        if (this.getQueryLen() > 0)
+            retVal = (double) this.numIdentical / this.getQueryLen();
+        return retVal;
+    }
+
+    /**
+     * @return the scaled bit score
+     */
+    public double getQueryBitScore() {
+        double retVal = 0.0;
+        if (this.getQueryLen() > 0)
+            retVal = (double) this.bitScore / this.getQueryLen();
+        return retVal;
+    }
+
+    /**
      * @return the number of similar positions
      */
     public int getNumSimilar() {
