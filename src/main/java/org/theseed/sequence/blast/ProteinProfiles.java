@@ -8,8 +8,11 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.theseed.io.TabbedLineReader;
 import org.theseed.proteins.RoleMap;
@@ -67,28 +70,31 @@ public class ProteinProfiles {
     }
 
     /**
-     * @return a map listing the profile hits against each subject sequence in the specified DNA blast database
+     * @return a map listing the profile hits against each subject sequence in the specified blast database
      *
-     * @param profiler	blast database to process against the profiles
+     * @param blastDB	blast database to process against the profiles
      * @param parms		BLAST parameters to use
      *
-     * @throws InterruptedException
-     * @throws IOException
      */
-    public Map<String, List<BlastHit>> profile(BlastDB profiler, BlastParms parms) throws IOException, InterruptedException {
+    public Map<String, List<BlastHit>> profile(BlastDB blastDB, BlastParms parms) {
         Map<String, List<BlastHit>> retVal = new HashMap<String, List<BlastHit>>();
-        this.hitCount = 0;
-        for (String cluster : this.clusterMap.keySet()) {
-            // Blast this role.
-            List<BlastHit> results = profiler.psiBlast(this.getFile(cluster), parms, this.clusterMap);
-            if (results.size() > 0) hitCount++;
-            // Put the results in the result map.
-            for (BlastHit result : results) {
-                String seqId = result.getSubjectId();
-                List<BlastHit> list = retVal.computeIfAbsent(seqId, x -> new ArrayList<BlastHit>(10));
-                list.add(result);
-            }
+        // We run the BLASTs in parallel.  The "map" blasts the cluster, "flatMap"
+        // converts a stream of lists to a stream of blast hits, and "collect"
+        // converts the stream back to a single list.
+        List<BlastHit> results = this.clusterMap.keySet().parallelStream()
+                .map(x -> blastDB.psiBlast(this.getFile(x), parms, this.clusterMap))
+                .flatMap(List::stream).collect(Collectors.toList());
+        // This will track the profiles hit.
+        Set<String> profilesHit = new HashSet<String>(results.size());
+        // Put the results in the result map.
+        for (BlastHit result : results) {
+            String seqId = result.getSubjectId();
+            profilesHit.add(result.getQueryId());
+            List<BlastHit> list = retVal.computeIfAbsent(seqId, x -> new ArrayList<BlastHit>(10));
+            list.add(result);
         }
+        // Count the profiles hit.
+        this.hitCount = profilesHit.size();
         return retVal;
     }
 
@@ -112,5 +118,6 @@ public class ProteinProfiles {
     public RoleMap roleMap() {
         return this.roleMap;
     }
+
 
 }

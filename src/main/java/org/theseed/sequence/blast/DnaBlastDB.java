@@ -122,15 +122,14 @@ public class DnaBlastDB extends BlastDB {
     }
 
     @Override
-    public List<BlastHit> blast(ProteinStream proteins, BlastParms parms)
-            throws IOException, InterruptedException {
+    public List<BlastHit> blast(ProteinStream proteins, BlastParms parms) {
         BlastParms myParms = parms.clone().db_gencode(this.geneticCode);
         List<BlastHit> retVal = this.runBlast("tblastn", proteins, myParms);
         return retVal;
     }
 
     @Override
-    public List<BlastHit> blast(DnaStream contigs, BlastParms parms) throws IOException, InterruptedException {
+    public List<BlastHit> blast(DnaStream contigs, BlastParms parms) {
         BlastParms myParms = parms.clone();
         List<BlastHit> retVal = this.runBlast("blastn", contigs, myParms);
         return retVal;
@@ -145,11 +144,9 @@ public class DnaBlastDB extends BlastDB {
      *
      * @return the list of blast hits found
      *
-     * @throws IOException
-     * @throws InterruptedException
      */
-    public List<BlastHit> psiBlast(File pssmFile, BlastParms parms, Map<String, String> qMap)
-            throws IOException, InterruptedException {
+    public List<BlastHit> psiBlast(File pssmFile, BlastParms parms, Map<String, String> qMap) {
+        this.saveCommand("tblastn", parms);
         BlastParms myParms = parms.clone().set("-in_pssm", pssmFile.getPath());
         List<BlastHit> retVal = this.processBlast("tblastn", myParms, qMap, true);
         return retVal;

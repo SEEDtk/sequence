@@ -138,8 +138,7 @@ public abstract class BlastDB {
      * @throws InterruptedException
      * @throws IOException
      */
-    public abstract List<BlastHit> blast(ProteinStream proteins, BlastParms parms)
-            throws IOException, InterruptedException;
+    public abstract List<BlastHit> blast(ProteinStream proteins, BlastParms parms);
 
     /**
      * BLAST DNA sequences against this database.
@@ -152,8 +151,7 @@ public abstract class BlastDB {
      * @throws InterruptedException
      * @throws IOException
      */
-    public abstract List<BlastHit> blast(DnaStream contigs, BlastParms parms)
-            throws IOException, InterruptedException;
+    public abstract List<BlastHit> blast(DnaStream contigs, BlastParms parms);
 
     /**
      * Run a protein PSI-BLAST against this database.
@@ -167,8 +165,7 @@ public abstract class BlastDB {
      * @throws IOException
      * @throws InterruptedException
      */
-    public abstract List<BlastHit> psiBlast(File pssmFile, BlastParms parms, Map<String, String> qMap)
-            throws IOException, InterruptedException;
+    public abstract List<BlastHit> psiBlast(File pssmFile, BlastParms parms, Map<String, String> qMap);
 
     /**
      * Run BLAST against the specified sequences with the specified parameters.
@@ -179,12 +176,11 @@ public abstract class BlastDB {
      * @param qProt			TRUE if the query sequence is protein
      *
      * @return a list of BlastHit objects representing the hits
-     *
-     * @throws IOException
-     * @throws InterruptedException
      */
-    protected List<BlastHit> runBlast(String blastProgram, SequenceStream seqs, BlastParms myParms)
-            throws IOException, InterruptedException {
+    protected List<BlastHit> runBlast(String blastProgram, SequenceStream seqs, BlastParms myParms) {
+        List<BlastHit> retVal = null;
+        // Save the command specs.
+        saveCommand(blastProgram, myParms);
         // Create a hash to map sequence labels to comments.
         Map<String, String> qMap = new ConcurrentHashMap<String, String>();
         // Copy the input to a temporary buffer file.  Unfortunately, this is required to
@@ -198,14 +194,25 @@ public abstract class BlastDB {
                 queryStream.write(seq);
             }
             queryStream.close();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
         log.debug("Submitting {} query sequences.", qMap.size());
         // Attach the query file as input.
         myParms.set("-query", this.tempFile.getPath());
         // Execute the BLAST and create the list of hits.
-        List<BlastHit> retVal = processBlast(blastProgram, myParms, qMap, seqs.isProtein());
+        retVal = processBlast(blastProgram, myParms, qMap, seqs.isProtein());
         // Return the result.
         return retVal;
+    }
+
+    /**
+     * @param blastProgram
+     * @param parms
+     */
+    protected void saveCommand(String blastProgram, BlastParms parms) {
+        this.blastType = blastProgram;
+        this.blastParms = parms.toString();
     }
 
     /**
@@ -221,14 +228,9 @@ public abstract class BlastDB {
      *
      * @return a list of blast hits
      *
-     * @throws IOException
-     * @throws InterruptedException
      */
     protected List<BlastHit> processBlast(String blastProgram, BlastParms myParms, Map<String, String> qMap,
-            boolean protsIn) throws IOException, InterruptedException {
-        // Save the command specs.
-        this.blastType = blastProgram;
-        this.blastParms = myParms.toString();
+            boolean protsIn) {
         // This will be the return value.
         List<BlastHit> retVal = new ArrayList<BlastHit>();
         // Set up the parameters and form the command.
@@ -239,30 +241,37 @@ public abstract class BlastDB {
         command.addAll(myParms.get());
         ProcessBuilder blastCommand = new ProcessBuilder(command);
         // Start the BLAST.
-        log.debug("Running BLAST command {}.", blastProgram);
-        Process blastProcess = blastCommand.start();
-        // Open the streams.
-        try (LineReader blastReader = new LineReader(blastProcess.getInputStream());
-                LineReader logReader = new LineReader(blastProcess.getErrorStream())) {
-            // Create a thread to read the blast output.
-            HitConsumer hitReader = new HitConsumer(blastReader, protsIn, qMap,
-                    myParms, retVal);
-            hitReader.start();
-            // Create a thread to save error log messages.  Generally there are none.
-            List<String> messages = new ArrayList<String>(30);
-            ErrorQueue errorReader = new ErrorQueue(logReader, messages);
-            errorReader.start();
-            // Clean up the process.
-            hitReader.join();
-            errorReader.join();
-            int exitCode = blastProcess.waitFor();
-            if (exitCode != 0) {
-                // We have an error. Output the error log.
-                log.error("Output from BLAST error log follows.");
-                for (String message : messages)
-                    log.error("   {}", message);
+        try {
+            log.debug("Running BLAST command {}.", blastProgram);
+            Process blastProcess = blastCommand.start();
+            // Open the streams.
+            try (LineReader blastReader = new LineReader(blastProcess.getInputStream());
+                    LineReader logReader = new LineReader(blastProcess.getErrorStream())) {
+                // Create a thread to read the blast output.
+                HitConsumer hitReader = new HitConsumer(blastReader, protsIn, qMap,
+                        myParms, retVal);
+                hitReader.start();
+                // Create a thread to save error log messages.  Generally there are none.
+                List<String> messages = new ArrayList<String>(30);
+                ErrorQueue errorReader = new ErrorQueue(logReader, messages);
+                errorReader.start();
+                // Clean up the process.
+                hitReader.join();
+                errorReader.join();
+                int exitCode = blastProcess.waitFor();
+                if (exitCode != 0) {
+                    // We have an error. Output the error log.
+                    log.error("Output from BLAST error log follows.");
+                    for (String message : messages)
+                        log.error("   {}", message);
+                }
             }
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        } catch (InterruptedException e) {
+            throw new RuntimeException("Interrupted BLAST execution: " + e.getMessage(), e);
         }
+
         return retVal;
     }
 

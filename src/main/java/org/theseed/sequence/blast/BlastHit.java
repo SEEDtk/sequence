@@ -22,6 +22,25 @@ import org.theseed.locations.Location;
 public class BlastHit {
 
     /**
+      * Comparator for best hit biased toward length
+      *
+      */
+    public static class Longest implements Comparator<BlastHit> {
+
+        @Override
+        public int compare(BlastHit o1, BlastHit o2) {
+            int retVal = o1.getAlignLen() - o2.getAlignLen();
+            if (retVal == 0) {
+                retVal = Double.compare(o1.getPercentSimilarity(), o2.getPercentSimilarity());
+                if (retVal == 0)
+                    retVal = Double.compare(o1.getPercentIdentity(), o2.getPercentIdentity());
+            }
+            return retVal;
+        }
+
+    }
+
+    /**
      * Class representing data on a sequence.  There is one of these for the query
      * and one for the subject.
      */
