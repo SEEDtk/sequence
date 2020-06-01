@@ -22,6 +22,23 @@ import org.theseed.locations.Location;
 public class BlastHit {
 
     /**
+      * Comparator for best hit biased toward bit score
+      */
+    public static class ByBitScore implements Comparator<BlastHit> {
+
+        @Override
+        public int compare(BlastHit o1, BlastHit o2) {
+            int retVal = Double.compare(o2.getBitScore(), o1.getBitScore());
+            if (retVal == 0) {
+                // TODO
+            }
+            // TODO Auto-generated method stub
+            return 0;
+        }
+
+    }
+
+    /**
       * Comparator for best hit biased toward length
       *
       */
@@ -29,11 +46,11 @@ public class BlastHit {
 
         @Override
         public int compare(BlastHit o1, BlastHit o2) {
-            int retVal = o1.getAlignLen() - o2.getAlignLen();
+            int retVal = o2.getAlignLen() - o1.getAlignLen();
             if (retVal == 0) {
-                retVal = Double.compare(o1.getPercentSimilarity(), o2.getPercentSimilarity());
+                retVal = Double.compare(o2.getPercentSimilarity(), o1.getPercentSimilarity());
                 if (retVal == 0)
-                    retVal = Double.compare(o1.getPercentIdentity(), o2.getPercentIdentity());
+                    retVal = Double.compare(o2.getPercentIdentity(), o1.getPercentIdentity());
             }
             return retVal;
         }
