@@ -22,6 +22,9 @@ import org.theseed.sequence.ProteinStream;
 import org.theseed.sequence.Sequence;
 import org.theseed.sequence.SequenceStream;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.LoggerContext;
+
 /**
  * This object represents a blast database stored in a file.  It can be used to reference an
  * existing blast database, or create one from a FASTA file or a genome object.
@@ -86,6 +89,19 @@ public abstract class BlastDB {
             retVal.createDb();
         }
         return retVal;
+    }
+
+    /**
+     * Specify the logging level relating to BLAST invocations.
+     *
+     * @param level		desired logging level
+     */
+    public static void configureLogging(String level) {
+        LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
+        ch.qos.logback.classic.Logger logger = loggerContext.getLogger("org.theseed.sequence.blast");
+        logger.setLevel(Level.toLevel(level));
+        log.info("BLAST logging set to {}.", level);
+
     }
 
 
