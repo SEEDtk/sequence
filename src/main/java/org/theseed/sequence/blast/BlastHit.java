@@ -30,10 +30,11 @@ public class BlastHit {
         public int compare(BlastHit o1, BlastHit o2) {
             int retVal = Double.compare(o2.getBitScore(), o1.getBitScore());
             if (retVal == 0) {
-                // TODO
+                retVal = Double.compare(o2.getPercentSimilarity(), o1.getPercentSimilarity());
+                if (retVal == 0)
+                    retVal = Double.compare(o2.getPercentIdentity(), o1.getPercentIdentity());
             }
-            // TODO Auto-generated method stub
-            return 0;
+            return retVal;
         }
 
     }
