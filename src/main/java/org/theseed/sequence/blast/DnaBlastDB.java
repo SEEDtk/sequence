@@ -67,9 +67,9 @@ public class DnaBlastDB extends BlastDB {
     }
 
     /**
-     * @return a new or existing protein blast database
+     * @return a new or existing DNA blast database
      *
-     * @param fastaFile		name of the fasta file containing the protein sequences
+     * @param fastaFile		name of the fasta file containing the DNA sequences
      * @param geneticCode	genetic code of the sequences
      *
      * @throws IOException
@@ -79,7 +79,7 @@ public class DnaBlastDB extends BlastDB {
         DnaBlastDB retVal = new DnaBlastDB();
         retVal.setFile(fastaFile);
         File testFile = new File(fastaFile.getPath() + ".nsq");
-        if (! testFile.exists() && testFile.lastModified() >= fastaFile.lastModified())
+        if (! testFile.exists() || testFile.lastModified() < fastaFile.lastModified())
             retVal.createDb();
         return retVal;
     }

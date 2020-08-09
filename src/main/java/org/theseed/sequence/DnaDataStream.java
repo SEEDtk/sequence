@@ -8,6 +8,9 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.stream.Stream;
 
+import org.theseed.genome.Contig;
+import org.theseed.genome.Genome;
+
 /**
  * This is a DNA stream created from an in-memory list.
  *
@@ -38,6 +41,20 @@ public class DnaDataStream extends DnaStream implements SequenceDataStream {
      */
     public DnaDataStream(int batchSize, int gc) {
         this.sequences = new ArrayList<Sequence>(batchSize);
+    }
+
+    /**
+     * Create a DNA data stream from a genome's contigs.
+     *
+     * @param genome	source genome
+     */
+    public DnaDataStream(Genome genome) {
+        this.sequences = new ArrayList<Sequence>(genome.getContigCount());
+        for (Contig contig : genome.getContigs()) {
+            Sequence seq = new Sequence(contig.getId(), contig.getDescription(), contig.getSequence());
+            this.sequences.add(seq);
+        }
+        this.setGeneticCode(genome.getGeneticCode());
     }
 
     @Override

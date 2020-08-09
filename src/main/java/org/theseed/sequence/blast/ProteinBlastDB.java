@@ -62,7 +62,7 @@ public class ProteinBlastDB extends BlastDB {
         ProteinBlastDB retVal = new ProteinBlastDB();
         retVal.setFile(fastaFile);
         File testFile = new File(fastaFile.getPath() + ".psq");
-        if (! testFile.exists() && testFile.lastModified() >= fastaFile.lastModified())
+        if (! testFile.exists() || testFile.lastModified() < fastaFile.lastModified())
             retVal.createDb();
         return retVal;
     }

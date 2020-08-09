@@ -5,7 +5,10 @@ package org.theseed.sequence;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Iterator;
 
+import org.theseed.genome.Contig;
+import org.theseed.genome.Genome;
 import org.theseed.sequence.blast.BlastDB;
 import org.theseed.sequence.blast.DnaBlastDB;
 import org.theseed.sequence.blast.ProteinBlastDB;
@@ -81,6 +84,24 @@ public class SourceTest extends TestCase {
         s = Source.prot.query(tempDir, pFile, 0);
         assertTrue(s.isProtein());
         assertThat(s, instanceOf(ProteinStream.class));
+    }
+
+    /**
+     * Test creating a DNA stream from a genome's contigs.
+     * @throws IOException
+     */
+    public void testGenomeDnaStream() throws IOException {
+        Genome gto = new Genome(new File("src/test", "1313.7001.gto"));
+        DnaStream stream = new DnaDataStream(gto);
+        assertThat(stream.getGeneticCode(), equalTo(gto.getGeneticCode()));
+        Iterator<Sequence> iter = stream.iterator();
+        for (Contig contig : gto.getContigs()) {
+            assertTrue(iter.hasNext());
+            Sequence seq = iter.next();
+            assertThat(seq.getLabel(), equalTo(contig.getId()));
+            assertThat(seq.getComment(), equalTo(contig.getDescription()));
+            assertThat(seq.getSequence(), equalTo(contig.getSequence()));
+        }
     }
 
 }
