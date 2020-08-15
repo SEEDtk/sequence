@@ -25,7 +25,6 @@ import junit.framework.TestCase;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
-import static org.hamcrest.io.FileMatchers.*;
 
 /**
  *
@@ -57,7 +56,7 @@ public class BlastTest extends TestCase {
         String[] suffixes = new String[] { ".nhr", ".nin", ".nsq" };
         for (String suffix : suffixes) {
             File testFile = new File(tempDir, "temp.fna" + suffix);
-            assertThat(testFile, aReadableFile());
+            assertThat(testFile.canRead(), equalTo(true));
         }
         BlastDB oldBlastDb = BlastDB.load(fastaFile);
         assertThat(oldBlastDb, instanceOf(DnaBlastDB.class));
@@ -68,7 +67,7 @@ public class BlastTest extends TestCase {
         suffixes = new String[] { ".phr", ".pin", ".psq" };
         for (String suffix : suffixes) {
             File testFile = new File(tempDir, "temp.faa" + suffix);
-            assertThat(testFile, aReadableFile());
+            assertThat(testFile.canRead(), equalTo(true));
         }
         oldBlastDb = BlastDB.load(protFile);
         assertThat(oldBlastDb, instanceOf(ProteinBlastDB.class));
