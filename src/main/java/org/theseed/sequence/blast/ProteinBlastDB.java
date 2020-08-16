@@ -97,7 +97,8 @@ public class ProteinBlastDB extends BlastDB {
      */
     public static ProteinBlastDB create(File fastaFile, Genome genome) throws IOException, InterruptedException {
         genome.savePegs(fastaFile);
-        return ProteinBlastDB.create(fastaFile);
+        ProteinBlastDB retVal = ProteinBlastDB.create(fastaFile);
+        return retVal;
     }
 
     @Override

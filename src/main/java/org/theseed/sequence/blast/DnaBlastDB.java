@@ -95,7 +95,8 @@ public class DnaBlastDB extends BlastDB {
      */
     public static DnaBlastDB create(File fastaFile, Genome genome) throws IOException, InterruptedException {
         genome.saveDna(fastaFile);
-        return DnaBlastDB.create(fastaFile, genome.getGeneticCode());
+        DnaBlastDB retVal = DnaBlastDB.create(fastaFile, genome.getGeneticCode());
+        return retVal;
     }
 
     /**
@@ -108,7 +109,8 @@ public class DnaBlastDB extends BlastDB {
      */
     public static DnaBlastDB createFromFeatures(File fastaFile, Genome genome) throws IOException, InterruptedException {
         genome.saveFeatures(fastaFile);
-        return DnaBlastDB.create(fastaFile, genome.getGeneticCode());
+        DnaBlastDB retVal = DnaBlastDB.create(fastaFile, genome.getGeneticCode());
+        return retVal;
     }
 
     @Override

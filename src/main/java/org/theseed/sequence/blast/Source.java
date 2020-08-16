@@ -82,22 +82,27 @@ public enum Source {
         case contigs:
             genome.saveDna(tempFile);
             retVal = DnaBlastDB.create(tempFile, gc);
+            retVal.setName("Contigs in " + genome.toString());
             break;
         case pegs:
             genome.savePegs(tempFile);
             retVal = ProteinBlastDB.create(tempFile);
+            retVal.setName("Proteins in " + genome.toString());
             break;
         case features:
             genome.saveFeatures(tempFile);
             retVal = DnaBlastDB.create(tempFile, gc);
+            retVal.setName("Features in " + genome.toString());
             break;
         case pegs_dna:
             genome.saveFeatures(tempFile, "CDS");
             retVal = DnaBlastDB.create(tempFile, gc);
+            retVal.setName("Peg DNA in " + genome.toString());
             break;
         case rna:
             genome.saveFeatures(tempFile, "rna");
             retVal = DnaBlastDB.create(tempFile, gc);
+            retVal.setName("RNAs in " + genome.toString());
             break;
         }
         // Insure we free up temporary files.

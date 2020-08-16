@@ -8,18 +8,26 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.io.LineReader;
+import org.theseed.reports.BlastInfo;
+import org.theseed.reports.Color;
+import org.theseed.reports.IBlastReporter;
 import org.theseed.sequence.DnaStream;
 import org.theseed.sequence.FastaOutputStream;
 import org.theseed.sequence.ProteinStream;
 import org.theseed.sequence.Sequence;
+import org.theseed.sequence.SequenceDataStream;
+import org.theseed.sequence.SequenceInputStream;
 import org.theseed.sequence.SequenceStream;
 
 import ch.qos.logback.classic.Level;
@@ -50,6 +58,8 @@ public abstract class BlastDB {
     private File tempFile;
     /** run counter for blasting */
     private static int runCount = 0;
+    /** display name for database */
+    private String name;
 
     /**
      * Construct a blank BLAST database.
@@ -414,6 +424,203 @@ public abstract class BlastDB {
      */
     public String getBlastParms() {
         return blastParms;
+    }
+
+    /**
+     * @return the name of this blast database
+     */
+    public String getName() {
+        String retVal = this.name;
+        if (retVal == null)
+            retVal = this.dbFile.getName();
+        return retVal;
+    }
+
+    /**
+     * Specify the name of this database.
+     *
+     * @param newName	new name to use
+     */
+    public void setName(String newName) {
+        this.name = newName;
+    }
+
+    /**
+     * Execute a full BLAST and output the results.
+     *
+     * @param query			query stream
+     * @param subject		subject database
+     * @param batchSize		query batch size
+     * @param parms			blast parameters
+     * @param reporter		output object
+     *
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    public void runBlast(SequenceInputStream query, int batchSize,
+            BlastParms parms, IBlastReporter reporter) throws IOException, InterruptedException {
+        // Loop through the batches in the query stream.
+        Iterator<SequenceDataStream> batcher = query.batchIterator(batchSize);
+        int batchCount = 0;
+        int seqCount = 0;
+        int hitCount = 0;
+        int missCount = 0;
+        while (batcher.hasNext()) {
+            SequenceDataStream batch = batcher.next();
+            // This set is used to track queries without hits.
+            Set<String> queryIds = batch.stream().map(x -> x.getLabel()).collect(Collectors.toSet());
+            // Record the batch.
+            batchCount++;
+            seqCount += batch.size();
+            log.info("Processing input batch {}, {} sequences read.", batchCount, seqCount);
+            // BLAST the query against the subject.
+            List<BlastHit> results = batch.blast(this, parms);
+            for (BlastHit hit : results) {
+                queryIds.remove(hit.getQueryId());
+                reporter.recordHit(hit);
+                hitCount++;
+            }
+            missCount += queryIds.size();
+            if (log.isDebugEnabled()) {
+                for (String queryId : queryIds)
+                    log.debug("{} had no hits.", queryId);
+            }
+        }
+        log.info("BLAST found {} hits, {} queries had no hits.", hitCount, missCount);
+        // Save our parameters and statistics.
+        BlastInfo blastInfo = new BlastInfo(this.getBlastParms(), seqCount, missCount, hitCount);
+        // Write the report.
+        log.info("Writing report.  {} total sequences in {} batches were processed.", seqCount, batchCount);
+        reporter.writeReport(this.getBlastType().toUpperCase()
+                + " run against " + this.getName(), blastInfo);
+    }
+
+    /**
+     * This enum indicates how the color of a hit is determined.
+     */
+    public enum ColorType {
+        /** percent identity */
+        ident("percent identity"),
+        /** percent similarity */
+        sim("percent similarity"),
+        /** percent coverage of target sequence */
+        covg("percent coverage");
+
+        // FIELDS
+        private String name;
+
+        private ColorType(String name) {
+            this.name = name;
+        }
+
+        /**
+         * @return the color for a blast hit by the specified target sequence.
+         *
+         * @param target	target sequence forming the denominator
+         * @param hit		blast hit whose color is needed
+         */
+        public Color computeColor(BlastHit.SeqData target, BlastHit hit) {
+            double fraction = 1.0;
+            switch (this) {
+            case ident:
+                fraction = ((double) hit.getNumIdentical()) / hit.getAlignLen();
+                break;
+            case sim:
+                fraction = ((double) hit.getNumSimilar()) / hit.getAlignLen();
+                break;
+            case covg:
+                fraction = ((double) hit.getNumSimilar()) / target.getLen();
+                break;
+            }
+            Color retVal;
+            if (fraction >= 1.0)
+                retVal = Color.BLUE;
+            else if (fraction >= 0.9)
+                retVal = Color.DARK_GREEN.brighten((1.0 - fraction)*5);
+            else if (fraction >= 0.7)
+                retVal = Color.ORANGE.brighten((0.9 - fraction)*2.5);
+            else if (fraction >= 0.5)
+                retVal = Color.RED.brighten((0.7 - fraction)*2.5);
+            else
+                retVal = Color.DARK_GRAY.brighten(0.5 - fraction);
+            return retVal;
+        }
+
+        public String description() {
+            return this.name;
+        }
+
+    }
+
+    /**
+     * This enum indicates the high-level sort for output.
+     */
+    public enum SortType {
+        /** sort by query, list subjects within query */
+        QUERY(BlastHit.QUERY, "queries"),
+        /** sort by subject, list queries within subject */
+        SUBJECT(BlastHit.SUBJECT, "subject sequences");
+
+        // FIELDS
+        private int sortIdx;
+        private int otherIdx;
+        private String plural;
+
+        private SortType(int idx, String plural) {
+            this.sortIdx = idx;
+            this.otherIdx = 1 - idx;
+            this.plural = plural;
+        }
+
+        /**
+         * @return the ID of the sequence being sorted on
+         *
+         * @param hit	blast hit whose sort ID is desired
+         */
+        public String idOf(BlastHit hit) {
+            return hit.getData(sortIdx).getId();
+        }
+
+        /**
+         * @return the ID of the sequence being hit
+         *
+         * @param hit	blast hit whose sequence ID is desired
+         */
+        public String targetOf(BlastHit hit) {
+            return hit.getData(otherIdx).getId();
+        }
+
+        /**
+         * @return TRUE if the hit has the specified target ID
+         *
+         * @param hit		blast hit to check
+         * @param otherId	ID of the desired target
+         */
+        public boolean targetEquals(BlastHit hit, String otherId) {
+            return otherId.contentEquals(this.targetOf(hit));
+        }
+
+        /**
+         * @return the sorting sequence data for the specified hit
+         */
+        public BlastHit.SeqData data(BlastHit hit) {
+            return hit.getData(this.sortIdx);
+        }
+
+        /**
+         * @return the target sequence data for the specified hit
+         */
+        public BlastHit.SeqData target(BlastHit hit) {
+            return hit.getData(this.otherIdx);
+        }
+
+        /**
+         * @return the plural phrase for the things being sorted
+         */
+        public String getPlural() {
+            return this.plural;
+        }
+
     }
 
 }
