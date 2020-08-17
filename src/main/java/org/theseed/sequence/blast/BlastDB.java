@@ -29,6 +29,7 @@ import org.theseed.sequence.Sequence;
 import org.theseed.sequence.SequenceDataStream;
 import org.theseed.sequence.SequenceInputStream;
 import org.theseed.sequence.SequenceStream;
+import org.theseed.utils.IDescribable;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
@@ -498,7 +499,7 @@ public abstract class BlastDB {
     /**
      * This enum indicates how the color of a hit is determined.
      */
-    public enum ColorType {
+    public enum ColorType implements IDescribable {
         /** percent identity */
         ident("percent identity"),
         /** percent similarity */
@@ -546,7 +547,7 @@ public abstract class BlastDB {
             return retVal;
         }
 
-        public String description() {
+        public String getDescription() {
             return this.name;
         }
 
@@ -555,21 +556,23 @@ public abstract class BlastDB {
     /**
      * This enum indicates the high-level sort for output.
      */
-    public enum SortType {
+    public enum SortType implements IDescribable {
         /** sort by query, list subjects within query */
-        QUERY(BlastHit.QUERY, "queries"),
+        QUERY(BlastHit.QUERY, "queries", "Sort by Query Sequence"),
         /** sort by subject, list queries within subject */
-        SUBJECT(BlastHit.SUBJECT, "subject sequences");
+        SUBJECT(BlastHit.SUBJECT, "subject sequences", "Sort by Subject Sequence");
 
         // FIELDS
         private int sortIdx;
         private int otherIdx;
         private String plural;
+        private String description;
 
-        private SortType(int idx, String plural) {
+        private SortType(int idx, String plural, String description) {
             this.sortIdx = idx;
             this.otherIdx = 1 - idx;
             this.plural = plural;
+            this.description = description;
         }
 
         /**
@@ -619,6 +622,11 @@ public abstract class BlastDB {
          */
         public String getPlural() {
             return this.plural;
+        }
+
+        @Override
+        public String getDescription() {
+            return this.description;
         }
 
     }

@@ -11,6 +11,7 @@ import org.theseed.io.MarkerFile;
 import org.theseed.sequence.DnaInputStream;
 import org.theseed.sequence.ProteinInputStream;
 import org.theseed.sequence.SequenceInputStream;
+import org.theseed.utils.IDescribable;
 
 /**
  * This enumeration represents a source for sequence information.  It can be used
@@ -18,29 +19,33 @@ import org.theseed.sequence.SequenceInputStream;
  *
  * @author Bruce Parrello
  */
-public enum Source {
+public enum Source implements IDescribable {
     /** existing blast database */
-    db(false),
+    db(false, false, "Existing Blast Database"),
     /** DNA FASTA */
-    dna(false),
+    dna(false, false, "DNA FASTA file"),
     /** protein FASTA */
-    prot(false),
+    prot(false, false, "Protein FASTA file"),
     /** genome contigs */
-    contigs(true),
+    contigs(true, true, "Contigs in a GTO"),
     /** genome feature proteins */
-    pegs(true),
+    pegs(true, true, "Proteins in a GTO"),
     /** genome feature DNA */
-    features(true),
+    features(true, true, "Feature DNA in a GTO"),
     /** genome protein DNA */
-    pegs_dna(true),
+    pegs_dna(true, true, "DNA of PEGs in a GTO"),
     /** genome RNA */
-    rna(true);
+    rna(true, true, "RNA features in a GTO");
 
     // FIELDS
     private boolean needsTempFiles;
+    private boolean needsGTO;
+    private String description;
 
-    private Source(boolean needsFile) {
+    private Source(boolean needsFile, boolean needsGTO, String description) {
         this.needsTempFiles = needsFile;
+        this.description = description;
+        this.needsGTO = needsGTO;
     }
 
     /**
@@ -173,6 +178,20 @@ public enum Source {
         if (this.needsTempFiles)
             tempFile.deleteOnExit();
         return retVal;
+    }
+
+    /**
+     * @return TRUE if the specified file is compatible with this source type
+     *
+     * @param sourceFile	file to check
+     */
+    public boolean checkFile(File sourceFile) {
+        return (this.needsGTO == sourceFile.getName().endsWith(".gto"));
+    }
+
+    @Override
+    public String getDescription() {
+        return this.description;
     }
 
 }

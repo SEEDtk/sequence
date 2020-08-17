@@ -26,7 +26,7 @@ public class BlastHtmlUtilities {
      * @param colorType		color type scheme
      */
     public static ContainerTag showColorInfo(BlastDB.ColorType colorType) {
-        return div().withClass("pod").with(p("Color is determined by " + colorType.description() + "."))
+        return div().withClass("pod").with(p("Color is determined by " + colorType.getDescription() + "."))
                 .with(table(tr(
                         th("100%").withStyle("background-color: " + Color.BLUE.html() + "; color: white"),
                         th("90% to 99%").withStyle("background-color: " + Color.DARK_GREEN.html() + ";"),
