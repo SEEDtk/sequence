@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.io.ErrorQueue;
 import org.theseed.io.LineReader;
 import org.theseed.reports.BlastInfo;
 import org.theseed.reports.Color;
@@ -30,6 +31,7 @@ import org.theseed.sequence.SequenceDataStream;
 import org.theseed.sequence.SequenceInputStream;
 import org.theseed.sequence.SequenceStream;
 import org.theseed.utils.IDescribable;
+import org.theseed.utils.ProcessUtils;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
@@ -263,9 +265,7 @@ public abstract class BlastDB {
         // Set up the parameters and form the command.
         myParms.set("-outfmt", BlastHit.OUT_FORMAT);
         myParms.set("-db", this.dbFile.getAbsolutePath());
-        List<String> command = new ArrayList<String>();
-        command.add(new File(BLAST_PATH, blastProgram).getPath());
-        command.addAll(myParms.get());
+        List<String> command = myParms.get(new File(BLAST_PATH, blastProgram).getPath());
         ProcessBuilder blastCommand = new ProcessBuilder(command);
         // Start the BLAST.
         try {
@@ -285,13 +285,7 @@ public abstract class BlastDB {
                 // Clean up the process.
                 hitReader.join();
                 errorReader.join();
-                int exitCode = blastProcess.waitFor();
-                if (exitCode != 0) {
-                    // We have an error. Output the error log.
-                    log.error("Output from BLAST error log follows.");
-                    for (String message : messages)
-                        log.error("   {}", message);
-                }
+                ProcessUtils.finishProcess("BLAST", blastProcess, messages);
             }
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -345,28 +339,6 @@ public abstract class BlastDB {
             log.info("{} results from BLAST #{}, {} returned.", count, runCount, hitList.size());
         }
     }
-
-    /**
-     * This class reads the error log from the BLAST and saves the results.
-     */
-    private class ErrorQueue extends Thread {
-
-        // FIELDS
-        private LineReader errorStream;
-        private List<String> errorMessages;
-
-        protected ErrorQueue(LineReader errorStream, List<String> messageBuffer) {
-            this.errorMessages = messageBuffer;
-            this.errorStream = errorStream;
-        }
-
-        @Override
-        public void run() {
-            for (String line : this.errorStream)
-                errorMessages.add(line);
-        }
-    }
-
 
     /**
      * @return the file name of this database
