@@ -12,13 +12,6 @@ import java.util.List;
 import org.theseed.genome.Contig;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
-import org.theseed.sequence.DnaDataStream;
-import org.theseed.sequence.DnaInputStream;
-import org.theseed.sequence.DnaStream;
-import org.theseed.sequence.ProteinDataStream;
-import org.theseed.sequence.ProteinInputStream;
-import org.theseed.sequence.Sequence;
-
 import junit.framework.TestCase;
 
 import static org.hamcrest.MatcherAssert.assertThat;
