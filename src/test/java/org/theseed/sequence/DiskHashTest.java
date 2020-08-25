@@ -27,7 +27,7 @@ public class DiskHashTest extends TestCase {
                 "MNAFTRMNGHYSEQTDLKAVLAKASPDVRTILEKALAGEELTQPEAIVLFETEGADYSAVLKTADAVRQQRCGDEASFIVTRNINFTNVCYMGCSFCNFSVAKDDA",
                 "MTIIGDSGRQIGPLTDAEAVELLGADGADLEDLCARADALRRDLVGDTLTFVVNRNLDTERVGAGTDESRERVRALVAEAAGLGATEICMQGPLPAGAPRDGYLDL"
         };
-        File hashFile = new File("src/test", "hash");
+        File hashFile = new File("data", "hash");
         LSHDiskSeqHash hash = LSHDiskSeqHash.create(100, 30, 100, 8, hashFile);
         SeqTest.createTestingHash(prots, hash);
         assertThat(hash.getKmerSize(), equalTo(8));

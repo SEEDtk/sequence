@@ -26,8 +26,8 @@ import static org.hamcrest.Matchers.*;
 public class StreamTest extends TestCase {
 
     public void testDnaStreams() throws IOException {
-        Genome gto = new Genome(new File("src/test", "360106.5.gto"));
-        File testFile = new File("src/test", "fasta.ser");
+        Genome gto = new Genome(new File("data", "360106.5.gto"));
+        File testFile = new File("data", "fasta.ser");
         gto.saveDna(testFile);
         int count = 0;
         List<Sequence> seqs = null;
@@ -89,8 +89,8 @@ public class StreamTest extends TestCase {
     }
 
     public void testProteinStreams() throws IOException {
-        Genome gto = new Genome(new File("src/test", "360106.5.gto"));
-        File testFile = new File("src/test", "fasta.ser");
+        Genome gto = new Genome(new File("data", "360106.5.gto"));
+        File testFile = new File("data", "fasta.ser");
         gto.savePegs(testFile);
         int pegCount = 0;
         int count = 0;

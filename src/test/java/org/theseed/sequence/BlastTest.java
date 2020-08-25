@@ -35,7 +35,7 @@ import static org.hamcrest.Matchers.*;
  */
 public class BlastTest extends TestCase {
 
-    private final File tempDir = new File("src/test", "temp");
+    private final File tempDir = new File("data", "temp");
 
     @Override
     protected void setUp() throws Exception {
@@ -46,7 +46,7 @@ public class BlastTest extends TestCase {
     }
 
     public void testFasta() throws IOException, InterruptedException {
-        File gtoFile = new File("src/test", "1313.7001.gto");
+        File gtoFile = new File("data", "1313.7001.gto");
         FileUtils.cleanDirectory(tempDir);
         Genome gto = new Genome(gtoFile);
         // Create and test a DNA database.
@@ -94,10 +94,10 @@ public class BlastTest extends TestCase {
     }
 
     public void testActualBlast() throws IOException, InterruptedException, CloneNotSupportedException {
-        Genome g2 = new Genome(new File("src/test", "1685.390.gto"));
-        File g1Pegs = new File("src/test", "g1.faa");
-        File g1dna = new File("src/test", "g1.fna");
-        File g3dna = new File("src/test", "g3.fna");
+        Genome g2 = new Genome(new File("data", "1685.390.gto"));
+        File g1Pegs = new File("data", "g1.faa");
+        File g1dna = new File("data", "g1.fna");
+        File g3dna = new File("data", "g3.fna");
         File g2Pegs = new File(tempDir, "g2.faa");
         File g2Contigs = new File(tempDir, "g2.fna");
         BlastDB g2ContigBlast = DnaBlastDB.create(g2Contigs, g2);
@@ -257,7 +257,7 @@ public class BlastTest extends TestCase {
         Map<String, String> qMap = new HashMap<String, String>();
         qMap.put("q1", "qtitle 1");
         qMap.put("q2", "qtitle 2");
-        try (LineReader testStream = new LineReader(new File("src/test", "results.txt"))) {
+        try (LineReader testStream = new LineReader(new File("data", "results.txt"))) {
             for (String line : testStream) {
                 BlastHit result = new BlastHit(line, qMap, true, true);
                 results0.add(result);

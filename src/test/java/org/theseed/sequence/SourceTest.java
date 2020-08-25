@@ -27,10 +27,10 @@ import static org.hamcrest.Matchers.*;
 public class SourceTest extends TestCase {
 
     public void testBlastDB() throws IOException, InterruptedException {
-        File tempDir = new File("src/test", "temp");
-        File gFile = new File("src/test", "1313.7001.gto");
-        File dnaFile = new File("src/test", "g1.fna");
-        File pFile = new File("src/test", "g1.faa");
+        File tempDir = new File("data", "temp");
+        File gFile = new File("data", "1313.7001.gto");
+        File dnaFile = new File("data", "g1.fna");
+        File pFile = new File("data", "g1.faa");
         BlastDB db = Source.contigs.subject(tempDir, gFile, 4, false);
         assertFalse(db.isProtein());
         assertThat(db, instanceOf(DnaBlastDB.class));
@@ -57,11 +57,11 @@ public class SourceTest extends TestCase {
     }
 
     public void testStream() throws IOException {
-        File tempDir = new File("src/test", "temp");
-        File gFile = new File("src/test", "1313.7001.gto");
-        File dnaFile = new File("src/test", "g1.fna");
-        File pFile = new File("src/test", "g1.faa");
-        File dbFile = new File("src/test", "target.fa");
+        File tempDir = new File("data", "temp");
+        File gFile = new File("data", "1313.7001.gto");
+        File dnaFile = new File("data", "g1.fna");
+        File pFile = new File("data", "g1.faa");
+        File dbFile = new File("data", "target.fa");
         SequenceStream s = Source.contigs.query(tempDir, gFile, 0);
         assertFalse(s.isProtein());
         assertThat(s, instanceOf(DnaStream.class));
@@ -91,7 +91,7 @@ public class SourceTest extends TestCase {
      * @throws IOException
      */
     public void testGenomeDnaStream() throws IOException {
-        Genome gto = new Genome(new File("src/test", "1313.7001.gto"));
+        Genome gto = new Genome(new File("data", "1313.7001.gto"));
         DnaStream stream = new DnaDataStream(gto);
         assertThat(stream.getGeneticCode(), equalTo(gto.getGeneticCode()));
         Iterator<Sequence> iter = stream.iterator();

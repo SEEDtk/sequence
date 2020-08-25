@@ -29,7 +29,7 @@ public class TestHitSorts extends TestCase {
         Map<String, String> qMap = new HashMap<String, String>();
         qMap.put("q1", "qtitle 1");
         qMap.put("q2", "qtitle 2");
-        try (LineReader testStream = new LineReader(new File("src/test", "results.txt"))) {
+        try (LineReader testStream = new LineReader(new File("data", "results.txt"))) {
             for (String line : testStream) {
                 BlastHit result = new BlastHit(line, qMap, true, true);
                 results0.add(result);

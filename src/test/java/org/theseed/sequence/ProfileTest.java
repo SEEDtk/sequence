@@ -32,7 +32,7 @@ import static org.hamcrest.Matchers.*;
  */
 public class ProfileTest extends TestCase {
 
-    private final File tempDir = new File("src/test", "temp");
+    private final File tempDir = new File("data", "temp");
 
     public ProfileTest() {
     }
@@ -45,9 +45,9 @@ public class ProfileTest extends TestCase {
     }
 
     public void testPsiBlast() throws IOException, InterruptedException {
-        Genome g2 = new Genome(new File("src/test", "1685.390.gto"));
+        Genome g2 = new Genome(new File("data", "1685.390.gto"));
         BlastDB gdb = DnaBlastDB.create(new File(tempDir, "pblast.fa"), g2);
-        File pFile = new File("src/test", "PhenTrnaSyntAlph.smp");
+        File pFile = new File("data", "PhenTrnaSyntAlph.smp");
         Map<String,String> qMap = new HashMap<String, String>();
         qMap.put("PhenTrnaSyntAlph", "Phenylalanyl-tRNA synthetase alpha chain (EC 6.1.1.20)");
         BlastParms parms = new BlastParms().maxE(1e-10);
@@ -62,10 +62,10 @@ public class ProfileTest extends TestCase {
     }
 
     public void testProfiles() throws IOException, InterruptedException {
-        Genome g2 = new Genome(new File("src/test", "1685.390.gto"));
+        Genome g2 = new Genome(new File("data", "1685.390.gto"));
         DnaBlastDB gdb = DnaBlastDB.create(new File(tempDir, "pblast.fa"), g2);
         BlastParms parms = new BlastParms().maxE(1e-10).minQueryBitScore(1.5);
-        ProteinProfiles profiler = new ProteinProfiles(new File("src/test", "Profiles"));
+        ProteinProfiles profiler = new ProteinProfiles(new File("data", "Profiles"));
         Map<String, List<BlastHit>> hitMap = profiler.profile(gdb, parms);
         assertThat(hitMap.size(), equalTo(3));
         for (String contigId : hitMap.keySet()) {

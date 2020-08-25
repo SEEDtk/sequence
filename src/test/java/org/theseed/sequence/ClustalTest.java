@@ -14,11 +14,11 @@ import org.theseed.sequence.clustal.ClustalPipeline;
 public class ClustalTest extends TestCase {
 
     public void testClustal() throws IOException, InterruptedException {
-        ClustalPipeline tester = new ClustalPipeline(new File("src/test", "seedprot.fa"));
+        ClustalPipeline tester = new ClustalPipeline(new File("data", "seedprot.fa"));
         List<Sequence> output = tester.run();
-        FastaInputStream testStream = new FastaInputStream(new File("src/test", "alignment.fa"));
+        FastaInputStream testStream = new FastaInputStream(new File("data", "alignment.fa"));
         int i = 0;
-        PrintWriter savedFile = new PrintWriter(new File("src/test", "align.html"));
+        PrintWriter savedFile = new PrintWriter(new File("data", "align.html"));
         savedFile.println("<div id=\"Aligned\"><table>");
         for (Sequence testSeq : testStream) {
             Sequence seq = output.get(i);

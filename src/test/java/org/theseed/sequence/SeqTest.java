@@ -162,7 +162,7 @@ public class SeqTest extends TestCase {
         // This will count the members of each family.
         CountMap<String> famCounts = new CountMap<String>();
         // Read in the protein families.
-        File pfamFile = new File("src/test", "prot.fams.tbl");
+        File pfamFile = new File("data", "prot.fams.tbl");
         try (TabbedLineReader pfamStream = new TabbedLineReader(pfamFile)) {
             for (TabbedLineReader.Line line : pfamStream) {
                 String family = line.get(1);

@@ -93,7 +93,7 @@ public class BucketTest extends TestCase {
         Bucket original = new Bucket();
         assertThat(original.size(), equalTo(0));
         // Read the test file and fill the bucket.
-        try (TabbedLineReader inStream = new TabbedLineReader(new File("src/test", "prot.fams.tbl"))) {
+        try (TabbedLineReader inStream = new TabbedLineReader(new File("data", "prot.fams.tbl"))) {
             // Column 2 is the MD5, 3 is the protein.
             for (TabbedLineReader.Line line : inStream) {
                 String md5 = line.get(2);
@@ -105,7 +105,7 @@ public class BucketTest extends TestCase {
         }
         // Now we write out the bucket.
         assertTrue(original.isModified());
-        File saveFile = new File("src/test", "bucket.ser");
+        File saveFile = new File("data", "bucket.ser");
         original.save(saveFile);
         assertFalse(original.isModified());
         // Read in a copy.
@@ -142,7 +142,7 @@ public class BucketTest extends TestCase {
      */
     public void testEmptyBucket() throws IOException, ClassNotFoundException {
         Bucket testBucket = new Bucket();
-        File emptyBucketFile = new File("src/test", "empty.ser");
+        File emptyBucketFile = new File("data", "empty.ser");
         testBucket.save(emptyBucketFile);
         Bucket loadBucket = Bucket.load(emptyBucketFile);
         assertThat(loadBucket.size(), equalTo(0));
