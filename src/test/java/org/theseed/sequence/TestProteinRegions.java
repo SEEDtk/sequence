@@ -1,0 +1,89 @@
+/**
+ *
+ */
+package org.theseed.sequence;
+
+import junit.framework.TestCase;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.*;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.List;
+
+import org.theseed.genome.Feature;
+import org.theseed.genome.Genome;
+import org.theseed.locations.Location;
+
+/**
+ * @author Bruce Parrello
+ *
+ */
+public class TestProteinRegions extends TestCase {
+
+    /**
+     * test ExtendedProteinRegion
+     *
+     * @throws IOException
+     */
+    public void testProteinRegions() throws IOException {
+        Genome gto = new Genome(new File("data", "1313.7001.gto"));
+        Feature feat = gto.getFeature("fig|1313.7001.peg.326");
+        ExtendedProteinRegion region = new ExtendedProteinRegion(feat, 733);
+        assertThat(region.getComment(), equalTo("hypothetical protein"));
+        assertThat(region.getFeature(), equalTo(feat));
+        Location loc = region.getFullLocation();
+        assertThat(loc.getLeft(), equalTo(69444));
+        assertThat(loc.getRight(), equalTo(70791));
+        assertThat(loc.getDir(), equalTo('+'));
+        assertThat(loc.getContigId(), equalTo("1313.7001.con.0011"));
+        assertThat(gto.getDna(loc), equalTo(region.getSequence()));
+        assertThat(region.getProteinTranslation(), equalTo(feat.getProteinTranslation()));
+        feat = gto.getFeature("fig|1313.7001.peg.325");
+        region = new ExtendedProteinRegion(feat, 500);
+        loc = region.getFullLocation();
+        assertThat(region.getFeature(), equalTo(feat));
+        assertThat(loc.getLeft(), equalTo(69473));
+        assertThat(loc.getLength(), equalTo(feat.getLocation().getLength() + 500));
+        assertThat(loc.getDir(), equalTo('-'));
+        assertThat(gto.getDna(loc), equalTo(region.getSequence()));
+        assertThat(region.getProteinTranslation(), equalTo(feat.getProteinTranslation()));
+        feat = gto.getFeature("fig|1313.7001.peg.897");
+        region = new ExtendedProteinRegion(feat, 318);
+        gto = new Genome(new File("data", "1313.7090.gto"));
+        feat = gto.getFeature("fig|1313.7090.peg.2070");
+        ExtendedProteinRegion region2 = new ExtendedProteinRegion(feat, 308);
+        double dist = region.getDistance(region2);
+        assertThat(dist, closeTo(0.1822, 0.0001));
+    }
+
+    /**
+     * test ExtendedProteinRegion lists
+     *
+     * @throws IOException
+     */
+    public void testRegionLists() throws IOException {
+        Genome gto = new Genome(new File("data", "1313.7001.gto"));
+        List<ExtendedProteinRegion> regions = ExtendedProteinRegion.getGenomeExtendedProteins(gto, 500);
+        assertThat(regions.size(), equalTo(gto.getPegs().size()));
+        for (ExtendedProteinRegion region : regions) {
+            Feature feat = region.getFeature();
+            assertThat(feat.getParent(), equalTo(gto));
+            assertThat(feat.getProteinLength(), greaterThan(0));
+            Location rLoc = region.getFullLocation();
+            Location fLoc = feat.getLocation();
+            int upstream = rLoc.getLength() - fLoc.getLength();
+            assertThat(feat.getId(), upstream, lessThanOrEqualTo(500));
+            assertThat(feat.getId(), upstream, greaterThanOrEqualTo(0));
+            if (feat.getId().contentEquals("fig|1313.7001.peg.896"))
+                assertThat(upstream, equalTo(12));
+            else if (feat.getId().contentEquals("fig|1313.7001.peg.326"))
+                assertThat(upstream, equalTo(500));
+            else if (feat.getId().contentEquals("fig|1313.7001.peg.4"))
+                assertThat(upstream, equalTo(0));
+            else if (feat.getId().contentEquals("fig|1313.7001.peg.1215"))
+                assertThat(upstream, equalTo(2));
+        }
+    }
+
+}
