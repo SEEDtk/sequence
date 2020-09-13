@@ -9,11 +9,13 @@ import static org.hamcrest.Matchers.*;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
+import java.util.Map;
 
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
 import org.theseed.locations.Location;
+import org.theseed.proteins.Function;
+import org.theseed.proteins.FunctionMap;
 
 /**
  * @author Bruce Parrello
@@ -64,7 +66,7 @@ public class TestProteinRegions extends TestCase {
      */
     public void testRegionLists() throws IOException {
         Genome gto = new Genome(new File("data", "1313.7001.gto"));
-        List<ExtendedProteinRegion> regions = ExtendedProteinRegion.getGenomeExtendedProteins(gto, 500);
+        RegionList regions = new RegionList(gto, 500);
         assertThat(regions.size(), equalTo(gto.getPegs().size()));
         for (ExtendedProteinRegion region : regions) {
             Feature feat = region.getFeature();
@@ -85,5 +87,30 @@ public class TestProteinRegions extends TestCase {
                 assertThat(upstream, equalTo(2));
         }
     }
+
+    /**
+     * test the function maps
+     */
+    public void testFunctionMap() throws IOException {
+        Genome gto = new Genome(new File("data", "1313.7001.gto"));
+        FunctionMap funMap = new FunctionMap();
+        Map<String, RegionList> rMap = RegionList.createMap(funMap, gto, 500);
+        for (Map.Entry<String, RegionList> rEntry : rMap.entrySet()) {
+            String funId = rEntry.getKey();
+            for (ExtendedProteinRegion region : rEntry.getValue()) {
+                Function function = funMap.getByName(region.getFeature().getPegFunction());
+                assertThat(function.getId(), equalTo(funId));
+            }
+        }
+        RegionList regions = new RegionList(gto, 500);
+        // Verify that each region in the genome is the closest one to its own function.
+        for (ExtendedProteinRegion region : regions) {
+            Function fun = funMap.getByName(region.getFeature().getPegFunction());
+            RegionList funRegions = rMap.get(fun.getId());
+            ExtendedProteinRegion closest = funRegions.getClosest(region, 0.1);
+            assertThat(closest.getFeature(), equalTo(region.getFeature()));
+        }
+    }
+
 
 }

@@ -3,7 +3,7 @@
  */
 package org.theseed.sequence;
 
-import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -78,27 +78,57 @@ public class ExtendedProteinRegion extends Sequence {
      * @param seq	other sequence to check
      */
     public double getDistance(Sequence seq) {
-        if (this.kmers == null)
-            this.kmers = new DnaKmers(this.getSequence());
         DnaKmers other = new DnaKmers(seq.getSequence());
-        return this.kmers.distance(other);
+        return this.getDistance(other);
     }
 
     /**
-     * Create a list of extended regions for this genome. Each extended region will contain a protein and its upstream
-     * region on the strand, restrained by a maximum.
+     * @return the kmer distance to another sequence
      *
-     * @param genome	genome of interest
-     * @param limit		maximum upstream value
+     * @param oKmers	kmers of the other sequence to check
      */
-    public static List<ExtendedProteinRegion> getGenomeExtendedProteins(Genome genome, int limit) {
-        List<ExtendedProteinRegion> retVal = new ArrayList<ExtendedProteinRegion>(4000);
-        // Get the features sorted by strand.
-        List<Feature> features = genome.getPegs().stream().sorted(new Feature.StrandComparator()).collect(Collectors.toList());
-        // Loop through the features.
-        for (int i = 0; i < features.size(); i++) {
+    public double getDistance(DnaKmers oKmers) {
+        if (this.kmers == null)
+            this.kmers = new DnaKmers(this.getSequence());
+        return this.kmers.distance(oKmers);
+    }
+
+    /**
+     * This is an iterator for all the extended protein regions in a genome.
+     */
+    public static class GenomeIterator implements Iterator<ExtendedProteinRegion> {
+
+        /** maximim upstream region size */
+        private int limit;
+        /** sorted list of pegs in the genome */
+        private List<Feature> features;
+        /** next feature to process */
+        private int iPos;
+        /** genome of interest */
+        private Genome genome;
+
+        /**
+         * Construct an iterator for a specified genome with a specified limit on the upstream region size.
+         *
+         * @param genome	genome of interest
+         * @param limit		maximum upstream region size
+         */
+        public GenomeIterator(Genome genome, int limit) {
+            this.limit = limit;
+            this.genome = genome;
+            this.features = genome.getPegs().stream().sorted(new Feature.StrandComparator()).collect(Collectors.toList());
+            this.iPos = 0;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return (this.iPos < this.features.size());
+        }
+
+        @Override
+        public ExtendedProteinRegion next() {
             // Get the current feature.
-            Feature feat = features.get(i);
+            Feature feat = features.get(this.iPos);
             // Get the previous feature.  This is strand-related.
             Location loc = feat.getLocation();
             Contig contig = genome.getContig(loc.getContigId());
@@ -106,7 +136,7 @@ public class ExtendedProteinRegion extends Sequence {
             int upstream;
             if (loc.getDir() == '-') {
                 int upstreamEdge = contig.length() + 1;
-                int i0 = i + 1;
+                int i0 = this.iPos + 1;
                 if (i0 < features.size()) {
                     Location loc0 = features.get(i0).getLocation();
                     if (loc0.getContigId().contentEquals(contig.getId()))
@@ -115,7 +145,7 @@ public class ExtendedProteinRegion extends Sequence {
                 upstream = upstreamEdge - loc.getEnd();
             } else {
                 int upstreamEdge = 0;
-                int i0 = i - 1;
+                int i0 = this.iPos - 1;
                 if (i0 > 0) {
                     Location loc0 = features.get(i0).getLocation();
                     if (loc0.getContigId().contentEquals(contig.getId()))
@@ -123,15 +153,18 @@ public class ExtendedProteinRegion extends Sequence {
                 }
                 upstream = loc.getBegin() - upstreamEdge;
             }
+            // Position on the next feature.
+            this.iPos++;
             // We want the whole number of base pairs between the two edges.
             upstream--;
             // Constrain the upstream distance.
             if (upstream > limit) upstream = limit;
             if (upstream < 0) upstream = 0;
-            // Create the region and save it.
-            ExtendedProteinRegion region = new ExtendedProteinRegion(feat, upstream);
-            retVal.add(region);
+            // Create the region.
+            ExtendedProteinRegion retVal = new ExtendedProteinRegion(feat, upstream);
+            return retVal;
         }
-        return retVal;
+
     }
+
 }
