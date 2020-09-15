@@ -3,6 +3,8 @@
  */
 package org.theseed.sequence;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -109,5 +111,19 @@ public class RegionList extends ArrayList<ExtendedProteinRegion> {
         }
         return retVal;
     }
+
+    /**
+     * Save the sequences to a file.
+     *
+     * @param fileName	name of the output file
+     *
+     * @throws IOException
+     */
+    public void save(File fileName) throws IOException {
+        try (FastaOutputStream outStream = new FastaOutputStream(fileName)) {
+            outStream.write(this);
+        }
+    }
+
 
 }
