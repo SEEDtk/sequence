@@ -55,4 +55,11 @@ public class RealSnipItem implements ISnipItem {
         return this.offset;
     }
 
+    @Override
+    public boolean isSignificant() {
+        return true;
+    }
+
+
+
 }

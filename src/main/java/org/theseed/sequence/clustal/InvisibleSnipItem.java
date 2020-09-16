@@ -28,4 +28,9 @@ public class InvisibleSnipItem extends RealSnipItem {
         return "";
     }
 
+    @Override
+    public boolean isSignificant() {
+        return false;
+    }
+
 }

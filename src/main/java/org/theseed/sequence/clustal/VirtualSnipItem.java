@@ -40,4 +40,9 @@ public class VirtualSnipItem implements ISnipItem {
         return 0;
     }
 
+    @Override
+    public boolean isSignificant() {
+        return false;
+    }
+
 }

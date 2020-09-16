@@ -54,15 +54,15 @@ public class SnipIterator implements Iterator<SnipColumn> {
      * @param wildSet	IDs of the wild genomes (including the base)
      * @param genomeIds	IDs of all the display genomes, in order; the base should be first
      */
-    public SnipIterator(RegionList regions, List<Sequence> alignment, Set<String> wildSet, String[] genomeIds) {
+    public SnipIterator(RegionList regions, List<Sequence> alignment, Set<String> wildSet, List<String> genomeIds) {
         // Create the arrays.
         this.wildSequences = new ArrayList<String>(wildSet.size());
-        this.alignedPositions = new ISnipPosition[genomeIds.length];
-        this.alignedLocations = new Location[genomeIds.length];
-        this.alignedFids = new String[genomeIds.length];
+        this.alignedPositions = new ISnipPosition[genomeIds.size()];
+        this.alignedLocations = new Location[genomeIds.size()];
+        this.alignedFids = new String[genomeIds.size()];
         // This next section is slow, but the number of aligned sequences will be small, so we can put up with it.
-        for (int i = 0; i < genomeIds.length; i++) {
-            String genomeId = genomeIds[i];
+        for (int i = 0; i < genomeIds.size(); i++) {
+            String genomeId = genomeIds.get(i);
             ExtendedProteinRegion region = (ExtendedProteinRegion) findGenome(regions, genomeId);
             if (region == null) {
                 // This genome did not participate, so make its position virtual.
@@ -203,7 +203,7 @@ public class SnipIterator implements Iterator<SnipColumn> {
          * @param wildSet	IDs of the wild genomes (including the base)
          * @param genomeIds	IDs of all the display genomes, in order; the base should be first
          */
-        public Run(RegionList regions, List<Sequence> alignment, Set<String> wildSet, String[] genomeIds) {
+        public Run(RegionList regions, List<Sequence> alignment, Set<String> wildSet, List<String> genomeIds) {
             this.iter = new SnipIterator(regions, alignment, wildSet, genomeIds);
         }
 

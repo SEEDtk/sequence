@@ -35,5 +35,10 @@ public interface ISnipItem {
      */
     public int getOffset();
 
+    /**
+     * @return TRUE if this snip is significant (different from the base and the wild strains)
+     */
+    public boolean isSignificant();
+
 
 }

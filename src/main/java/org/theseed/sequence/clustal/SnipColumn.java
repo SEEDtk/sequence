@@ -75,4 +75,13 @@ public class SnipColumn {
         return this.snips[row].getOffset();
     }
 
+    /**
+     * @return TRUE if the snip in the specified row is significant
+     *
+     * @param row	row of interest
+     */
+    public boolean isSignificant(int row) {
+        return this.snips[row].isSignificant();
+    }
+
 }

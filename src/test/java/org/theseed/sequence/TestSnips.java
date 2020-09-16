@@ -17,6 +17,7 @@ import static org.hamcrest.Matchers.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -66,22 +67,23 @@ public class TestSnips extends TestCase {
         phesRegions.save(tempFile);
         ClustalPipeline pipeline = new ClustalPipeline(tempFile);
         List<Sequence> alignment = pipeline.run();
-        String[] genomes = new String[] { "1313.5684", "1313.7001", "1313.7090", "1313.5593", "1313.6795" };
+        List<String> genomes = Arrays.asList("1313.5684", "1313.7001", "1313.7090", "1313.5593", "1313.6795");
         Set<String> wildSet = new TreeSet<String>();
         wildSet.add("1313.5684");
         wildSet.add("360106.5");
-        SnipIterator iter = new SnipIterator(phesRegions, alignment, wildSet, genomes);
-        while (iter.hasNext()) {
-            SnipColumn snipCol = iter.next();
+        SnipIterator.Run snipRun = new SnipIterator.Run(phesRegions, alignment, wildSet, genomes);
+        for (SnipColumn snipCol : snipRun) {
             // Verify that the snips are properly located.
             String baseText = snipCol.getSnip(0);
             assertThat(snipCol.getWidth(), equalTo(baseText.length()));
-            for (int row = 1; row < genomes.length; row++) {
+            for (int row = 1; row < genomes.size(); row++) {
                 String newText = snipCol.getSnip(row);
-                if (! newText.isEmpty()) {
+                if (! snipCol.isSignificant(row)) {
+                    assertThat(newText, emptyString());
+                } else {
                     assertThat(newText, not(equalTo(baseText)));
                     assertThat(newText.length(), equalTo(baseText.length()));
-                    assertThat(Feature.genomeOf(snipCol.getFid(row)), equalTo(genomes[row]));
+                    assertThat(Feature.genomeOf(snipCol.getFid(row)), equalTo(genomes.get(row)));
                     int offset = snipCol.getOffset(row);
                     assertThat(phesRegions.get(row).getSequence().substring(offset, offset + newText.length()), equalTo(newText));
                 }
