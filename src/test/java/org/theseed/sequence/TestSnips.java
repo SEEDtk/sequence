@@ -73,6 +73,7 @@ public class TestSnips extends TestCase {
         wildSet.add("360106.5");
         SnipIterator.Run snipRun = new SnipIterator.Run(phesRegions, alignment, wildSet, genomes);
         for (SnipColumn snipCol : snipRun) {
+            assertThat(snipCol.getRows(), equalTo(5));
             // Verify that the snips are properly located.
             String baseText = snipCol.getSnip(0);
             assertThat(snipCol.getWidth(), equalTo(baseText.length()));

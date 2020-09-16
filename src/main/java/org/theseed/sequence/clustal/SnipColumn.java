@@ -84,4 +84,11 @@ public class SnipColumn {
         return this.snips[row].isSignificant();
     }
 
+    /**
+     * @return the number of rows
+     */
+    public int getRows() {
+        return this.snips.length;
+    }
+
 }
