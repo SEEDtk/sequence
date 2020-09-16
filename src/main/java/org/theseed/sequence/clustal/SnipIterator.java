@@ -187,4 +187,31 @@ public class SnipIterator implements Iterator<SnipColumn> {
         return retVal;
     }
 
+    /**
+     * This class is a snip iterable, allowing snip iteration in for-each blocks.
+     */
+    public static class Run implements Iterable<SnipColumn> {
+
+        /** underlying iterator */
+        private SnipIterator iter;
+
+        /**
+         * Create an iteration run for a single alignment result.
+         *
+         * @param regions	list of regions being aligned
+         * @param alignment	list of aligned sequences
+         * @param wildSet	IDs of the wild genomes (including the base)
+         * @param genomeIds	IDs of all the display genomes, in order; the base should be first
+         */
+        public Run(RegionList regions, List<Sequence> alignment, Set<String> wildSet, String[] genomeIds) {
+            this.iter = new SnipIterator(regions, alignment, wildSet, genomeIds);
+        }
+
+        @Override
+        public Iterator<SnipColumn> iterator() {
+            return this.iter;
+        }
+
+    }
+
 }
