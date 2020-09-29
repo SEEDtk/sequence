@@ -41,12 +41,8 @@ public interface ISnipPosition {
     public String getFid();
 
     /**
-     * @return TRUE if this change is visible
+     * @return the difference count
      */
-    public boolean isVisible(RealSnipPosition basePosition);
+    public int getDiffCount();
 
-    /**
-     * @return an invisible snip item for this position
-     */
-    public ISnipItem exportInvisible();
 }

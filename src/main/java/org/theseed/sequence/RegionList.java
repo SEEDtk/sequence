@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Optional;
 
 import org.theseed.genome.Genome;
 import org.theseed.proteins.Function;
@@ -123,6 +124,18 @@ public class RegionList extends ArrayList<ExtendedProteinRegion> {
         try (FastaOutputStream outStream = new FastaOutputStream(fileName)) {
             outStream.write(this);
         }
+    }
+
+    /**
+     * @return the region (if any) for the specified feature
+     *
+     * @param fid	ID of the feature of interest
+     */
+    public ExtendedProteinRegion get(String fid) {
+        Optional<ExtendedProteinRegion> found = this.stream().filter(x -> x.getFeature().getId().contentEquals(fid)).findFirst();
+        ExtendedProteinRegion retVal = null;
+        if (found.isPresent()) retVal = found.get();
+        return retVal;
     }
 
 

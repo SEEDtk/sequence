@@ -4,7 +4,6 @@
 package org.theseed.sequence;
 
 import junit.framework.TestCase;
-import static org.theseed.test.Matchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 
@@ -58,17 +57,6 @@ public class TestProteinRegions extends TestCase {
         ExtendedProteinRegion region2 = new ExtendedProteinRegion(feat, 308);
         double dist = region.getDistance(region2);
         assertThat(dist, closeTo(0.1822, 0.0001));
-        // Test the isChanged thing.
-        feat = gto.getFeature("fig|1313.7090.peg.270");
-        region2 = new ExtendedProteinRegion(feat, 308);
-        assertThat(region2.isChanged(1000, "----", 0), isFalse());
-        assertThat(region2.isChanged(300, "----", 0), isFalse());
-        assertThat(region2.isChanged(308, "--t-", 1), isFalse());
-        assertThat(region2.isChanged(309, "cc", 1), isTrue());
-        assertThat(region2.isChanged(310, "acgt", 3), isTrue());
-        assertThat(region2.isChanged(313, "c-tac--ccgaac", 10), isFalse());
-        assertThat(region2.isChanged(313, "c-tac--ccgtac", 10), isTrue());
-        assertThat(region2.isChanged(1527, "aac", 2), isTrue());
     }
 
     /**
@@ -97,6 +85,7 @@ public class TestProteinRegions extends TestCase {
                 assertThat(upstream, equalTo(0));
             else if (feat.getId().contentEquals("fig|1313.7001.peg.1215"))
                 assertThat(upstream, equalTo(2));
+            assertThat(regions.get(feat.getId()), sameInstance(region));
         }
         File tempFile = new File("data/temp", "regionList.fa");
         regions.save(tempFile);

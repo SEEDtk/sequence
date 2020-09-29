@@ -46,6 +46,13 @@ public class SnipColumn {
     }
 
     /**
+     * @return the full snip item for the specified row
+     */
+    public ISnipItem getItem(int row) {
+        return this.snips[row];
+    }
+
+    /**
      * @return the location string for the specified row
      */
     public String getLocString(int row) {

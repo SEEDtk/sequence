@@ -7,12 +7,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang3.StringUtils;
 import org.theseed.genome.Contig;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
 import org.theseed.locations.Location;
-import org.theseed.proteins.DnaTranslator;
 
 /**
  * An extended protein region is a protein-encoding gene along with its upstream region.  It contains location information,
@@ -32,8 +30,6 @@ public class ExtendedProteinRegion extends Sequence {
     private DnaKmers kmers;
     /** upstream distance */
     private int upstreamDistance;
-    /** DNA translator */
-    private DnaTranslator xlator;
 
     /**
      * Create an extended protein region from a feature.
@@ -57,9 +53,7 @@ public class ExtendedProteinRegion extends Sequence {
         this.setComment(feat.getFunction());
         // Denote there are no kmers cached.
         this.kmers = null;
-        // Denote there is no translator cached.
-        this.xlator = null;
-    }
+   }
 
     /**
      * @return the full location
@@ -104,52 +98,17 @@ public class ExtendedProteinRegion extends Sequence {
     }
 
     /**
-     * @return TRUE if the protein translation is changed with the specified snip inserted
-     *
-     * @param offset	offset in the full location at which to insert the snip
-     * @param snip		text of the snip to insert
-     * @param rLen		length of the region being replaced
+     * @return the length of the part of this region upstream from the protein
      */
-    public boolean isChanged(int offset, String snip, int rLen) {
-        // Remove all the gaps from the snip.
-        String compacted = StringUtils.remove(snip, '-');
-        int len = compacted.length();
-        // If the snip is all gaps, we record no change and stop.
-        boolean retVal = false;
-        if (len > 0) {
-            // If the upstream region is changed, we record a change and stop.
-            retVal = (offset < this.upstreamDistance);
-            if (! retVal) {
-                // Here there are no modifications to the upstream region, so we may have an invisible modification
-                // to the protein.  Plug in the snip to the protein part.
-                String pSeq = this.sequence.substring(this.upstreamDistance, offset) + compacted + this.sequence.substring(offset + rLen);
-                // Get a translator.
-                if (this.xlator == null) {
-                    int gc = this.sourceFeature.getParent().getGeneticCode();
-                    this.xlator = new DnaTranslator(gc);
-                }
-                // Now we want to isolate the snip part of the protein.  Compute the first altered codon.
-                int start = offset - this.upstreamDistance;
-                start -= start % 3;
-                // Compute the position in the protein translation of the starting codon.
-                int aaPos = start / 3;
-                // Insure the translation length is a whole number of codons.
-                len += 2; len -= len % 3;
-                // Now we translate.  Note we have to convert "start" to a 1-based position.
-                String newProt;
-                if (start == 0) {
-                    // Because this is a PEG, the first codon gets special treatment.
-                    newProt = this.xlator.pegTranslate(pSeq, start + 1, len);
-                } else {
-                    // Here we're a middle codon, so we do a pure translate.
-                    newProt = this.xlator.translate(pSeq, start + 1, len);
-                }
-                String oldProt = this.getProteinTranslation();
-                // Compare the translations to check for a change.
-                retVal = ! oldProt.regionMatches(aaPos, newProt, 0, newProt.length());
-            }
-        }
-        return retVal;
+    public int getUpstreamDistance() {
+        return this.upstreamDistance;
+    }
+
+    /**
+     * @return the upstream DNA in this region
+     */
+    public String getUpstreamDna() {
+        return this.sequence.substring(0, this.upstreamDistance);
     }
 
     /**

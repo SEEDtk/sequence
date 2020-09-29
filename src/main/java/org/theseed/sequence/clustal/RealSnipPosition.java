@@ -106,21 +106,8 @@ public class RealSnipPosition implements ISnipPosition {
     }
 
     @Override
-    public boolean isVisible(RealSnipPosition basePosition) {
-        // We only need to check if there is a real difference and the lengths are the same.  Otherwise, we know for sure.
-        boolean retVal = (this.diffCount > 0);
-        if (retVal && basePosition.len == this.len)
-            retVal = basePosition.region.isChanged(this.offset, this.snip.toString(), basePosition.len);
-        return retVal;
-    }
-
-    @Override
-    public ISnipItem exportInvisible() {
-        ISnipItem retVal = new InvisibleSnipItem(this.snip.toString(), this.snipOffset, this.len);
-        // Clear the snip buffer for the next snip.
-        resetSnip();
-        // Return the snip descriptor.
-        return retVal;
+    public int getDiffCount() {
+        return this.diffCount;
     }
 
 }

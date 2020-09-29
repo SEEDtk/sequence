@@ -41,14 +41,8 @@ public class VirtualSnipPosition implements ISnipPosition {
     }
 
     @Override
-    public boolean isVisible(RealSnipPosition basePosition) {
-        // Virtual sequence changes are never visible.
-        return false;
-    }
-
-    @Override
-    public ISnipItem exportInvisible() {
-        return this.export();
+    public int getDiffCount() {
+        return 0;
     }
 
 }

@@ -3,6 +3,7 @@
  */
 package org.theseed.sequence;
 
+import org.apache.commons.lang3.StringUtils;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
 import org.theseed.locations.Location;
@@ -39,6 +40,21 @@ public class TestSnips extends TestCase {
         is = new RealSnipItem("----", 100, 0);
         assertThat(is.getLocString(loc1), equalTo("contig1_1100+0"));
         assertThat(is.getLocString(loc2), equalTo("contig2_1900-0"));
+    }
+
+    public void testSnipAnalysis() throws IOException {
+        Genome gto = new Genome(new File("data", "1313.5684.gto"));
+        Feature feat = gto.getFeature("fig|1313.5684.peg.2088");
+        ExtendedProteinRegion region = new ExtendedProteinRegion(feat, 100);
+        RealSnipItem is = new RealSnipItem("aaa--atg-caacta--ttg-a", 97, 15);
+        String[] aaMap = is.getProteinMap(region);
+        assertThat(aaMap, arrayContaining("extron", "extron", "extron", "Methionine", "Methionine", "Methionine", "Methionine", "Methionine",
+                "Serine", "Serine", "Serine", "Serine", "Threonine", "Threonine", "Threonine", "Isoleucine", "Isoleucine",
+                "Isoleucine", "Isoleucine", "Isoleucine", "Glutamic Acid", "Glutamic Acid"));
+        is = new RealSnipItem("taaataa---", 1137, 7);
+        aaMap = is.getProteinMap(region);
+        assertThat(aaMap, arrayContaining("Glutamine", "Phenylalanine", "Phenylalanine", "Phenylalanine", "Lysine", "Lysine",
+                "Lysine", "gap", "gap", "gap"));
     }
 
     public void testSnipIterator() throws IOException, InterruptedException {
@@ -82,11 +98,12 @@ public class TestSnips extends TestCase {
                 if (! snipCol.isSignificant(row)) {
                     assertThat(newText, emptyString());
                 } else {
-                    assertThat(newText, not(equalTo(baseText)));
                     assertThat(newText.length(), equalTo(baseText.length()));
                     assertThat(Feature.genomeOf(snipCol.getFid(row)), equalTo(genomes.get(row)));
                     int offset = snipCol.getOffset(row);
-                    assertThat(phesRegions.get(row).getSequence().substring(offset, offset + newText.length()), equalTo(newText));
+                    String compacted = StringUtils.remove(newText, '-');
+                    if (! compacted.isEmpty())
+                        assertThat(phesRegions.get(row).getSequence().substring(offset, offset + compacted.length()), equalTo(compacted));
                 }
             }
         }

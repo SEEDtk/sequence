@@ -120,26 +120,17 @@ public class SnipIterator implements Iterator<SnipColumn> {
                     this.iPos++;
                     aligned++;
                 }
-                // Now we export the snips to create the result column.  We need to count the
-                // visible snips, and we need to start with the base snip.
-                int visible = 0;
+                // Now we export the snips to create the result column.  We need to start with the base snip.
                 ISnipItem[] snips = new ISnipItem[this.alignedPositions.length];
                 RealSnipPosition basePosition = (RealSnipPosition) this.alignedPositions[0];
                 snips[0] = basePosition.export();
                 // Loop through the aligned snips.
                 for (int i = 1; i < this.alignedPositions.length; i++) {
                     ISnipPosition position = this.alignedPositions[i];
-                    if (position.isVisible(basePosition)) {
-                        visible++;
-                        snips[i] = position.export();
-                    } else {
-                        snips[i] = position.exportInvisible();
-                    }
+                    snips[i] = position.export();
                 }
-                if (visible > 0) {
-                    this.next = new SnipColumn(aligned, this.alignedFids, this.alignedLocations, snips);
-                    done = true;
-                }
+                this.next = new SnipColumn(aligned, this.alignedFids, this.alignedLocations, snips);
+                done = true;
             }
         }
     }
