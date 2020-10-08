@@ -9,7 +9,9 @@ import static org.hamcrest.Matchers.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
@@ -122,6 +124,16 @@ public class TestProteinRegions extends TestCase {
             RegionList funRegions = rMap.get(fun.getId());
             ExtendedProteinRegion closest = funRegions.getClosest(region, 0.1);
             assertThat(closest.getFeature(), equalTo(region.getFeature()));
+        }
+        // Verify that the region list sort works.
+        List<RegionList> sorted = rMap.values().stream().sorted().collect(Collectors.toList());
+        assertThat(sorted.size(), equalTo(rMap.size()));
+        for (int i = 1; i < sorted.size(); i++) {
+            Location loc0 = sorted.get(i - 1).get(0).getFullLocation();
+            Location loc1 = sorted.get(i).get(0).getFullLocation();
+            String label = loc0.toString() + " <-> " + loc1.toString();
+            assertThat(label, loc0, lessThanOrEqualTo(loc1));
+            assertThat(label, loc0.getContigId(), lessThanOrEqualTo(loc1.getContigId()));
         }
     }
 

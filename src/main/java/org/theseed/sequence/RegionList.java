@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.theseed.genome.Genome;
+import org.theseed.locations.Location;
 import org.theseed.proteins.Function;
 import org.theseed.proteins.FunctionMap;
 
@@ -23,7 +24,7 @@ import org.theseed.proteins.FunctionMap;
  * @author Bruce Parrello
  *
  */
-public class RegionList extends ArrayList<ExtendedProteinRegion> {
+public class RegionList extends ArrayList<ExtendedProteinRegion> implements Comparable<RegionList> {
 
     // FIELDS
     /** serialization ID */
@@ -135,6 +136,28 @@ public class RegionList extends ArrayList<ExtendedProteinRegion> {
         Optional<ExtendedProteinRegion> found = this.stream().filter(x -> x.getFeature().getId().contentEquals(fid)).findFirst();
         ExtendedProteinRegion retVal = null;
         if (found.isPresent()) retVal = found.get();
+        return retVal;
+    }
+
+    /**
+     * The ordering for region lists is based on the location of the first region.
+     */
+    @Override
+    public int compareTo(RegionList o) {
+        int retVal = 0;
+        if (this.size() == 0 && o.size() == 0)
+            retVal = 0;
+        else if (this.size() == 0)
+            retVal = -1;
+        else if (o.size() == 0)
+            retVal = 1;
+        else {
+            Location loc = this.get(0).getFullLocation();
+            Location oLoc = o.get(0).getFullLocation();
+            retVal = loc.compareTo(oLoc);
+            if (retVal == 0)
+                retVal = this.get(0).getFeature().compareTo(o.get(0).getFeature());
+        }
         return retVal;
     }
 
