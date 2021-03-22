@@ -6,7 +6,8 @@ package org.theseed.sequence;
 import java.util.Iterator;
 
 /**
- * This is an iterator that batvh
+ * This is an iterator that separates a stream of sequences into batches.
+ *
  * @author parrello
  *
  */
