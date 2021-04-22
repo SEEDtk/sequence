@@ -26,6 +26,11 @@ public class VirtualSnipItem implements ISnipItem {
     }
 
     @Override
+    public Location getLoc(Location loc) {
+        return loc;
+    }
+
+    @Override
     public int getLen() {
         return 0;
     }

@@ -160,7 +160,7 @@ public class ExtendedProteinRegion extends Sequence {
                     if (loc0.getContigId().contentEquals(contig.getId()))
                         upstreamEdge = loc0.getEnd();
                 }
-                upstream = upstreamEdge - loc.getEnd();
+                upstream = upstreamEdge - loc.getBegin();
             } else {
                 int upstreamEdge = 0;
                 int i0 = this.iPos - 1;

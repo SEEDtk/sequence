@@ -21,6 +21,13 @@ public interface ISnipItem {
     public String getLocString(Location loc);
 
     /**
+     * @return the location for this snip
+     *
+     * @loc		location of the original sequence
+     */
+    public Location getLoc(Location loc);
+
+    /**
      * @return the length this snip consumes in the original sequence
      */
     public int getLen();
@@ -39,6 +46,5 @@ public interface ISnipItem {
      * @return TRUE if this snip is significant (different from the base and the wild strains)
      */
     public boolean isSignificant();
-
 
 }

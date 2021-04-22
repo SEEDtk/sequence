@@ -96,6 +96,10 @@ public class RealSnipItem implements ISnipItem {
     }
 
     @Override
+    public Location getLoc(Location loc) {
+        return loc.subLocation(this.offset, this.len);
+    }
+    @Override
     public int getLen() {
         return this.len;
     }
@@ -114,7 +118,6 @@ public class RealSnipItem implements ISnipItem {
     public boolean isSignificant() {
         return true;
     }
-
 
 
 }
