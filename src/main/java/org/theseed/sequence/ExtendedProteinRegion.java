@@ -30,6 +30,8 @@ public class ExtendedProteinRegion extends Sequence {
     private DnaKmers kmers;
     /** upstream distance */
     private int upstreamDistance;
+    /** length of the contig */
+    private int contigLen;
 
     /**
      * Create an extended protein region from a feature.
@@ -43,7 +45,8 @@ public class ExtendedProteinRegion extends Sequence {
         Genome parent = feat.getParent();
         Location featLoc = feat.getLocation();
         Contig contig = parent.getContig(featLoc.getContigId());
-        this.fullLocation = featLoc.expandUpstream(upstream, contig.length());
+        this.contigLen = contig.length();
+        this.fullLocation = featLoc.expandUpstream(upstream, this.contigLen);
         // Save the upstream distance.
         this.upstreamDistance = upstream;
         // Get the DNA.
@@ -109,6 +112,14 @@ public class ExtendedProteinRegion extends Sequence {
      */
     public String getUpstreamDna() {
         return this.sequence.substring(0, this.upstreamDistance);
+    }
+
+    /**
+     * @return TRUE if the specified offset is at the edge of the contig
+     */
+    public boolean isVirtual(int offset) {
+        int offsetPoint = this.fullLocation.offsetPoint(offset);
+        return (offsetPoint <= 1 || offsetPoint >= this.contigLen);
     }
 
     /**

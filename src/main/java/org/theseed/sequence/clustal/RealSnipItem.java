@@ -48,7 +48,7 @@ public class RealSnipItem implements ISnipItem {
         retVal['H'] = "Histidine"; retVal['I'] = "Isoleucine"; retVal['L'] = "Leucine"; retVal['K'] = "Lysine";
         retVal['M'] = "Methionine"; retVal['F'] = "Phenylalanine"; retVal['P'] = "Proline"; retVal['S'] = "Serine";
         retVal['T'] = "Threonine"; retVal['W'] = "Tryptophan"; retVal['Y'] = "Tyrosine"; retVal['V'] = "Valine";
-        retVal['X'] = "Unknown"; retVal['-'] = "gap"; retVal[' '] = "extron"; retVal['*'] = "stop";
+        retVal['X'] = "Unknown"; retVal['-'] = "gap"; retVal[' '] = "upstream"; retVal['*'] = "stop";
         return retVal;
     }
 
@@ -117,6 +117,21 @@ public class RealSnipItem implements ISnipItem {
     @Override
     public boolean isSignificant() {
         return true;
+    }
+
+    @Override
+    public boolean isReal(String base, ExtendedProteinRegion region) {
+        int offset = 0;
+        boolean retVal = false;
+        // Loop until we find a real difference.
+        for (int i = 0; ! retVal && i < base.length(); i++) {
+            char c = this.text.charAt(i);
+            char cBase = base.charAt(i);
+            if (c != cBase)
+                retVal = ! region.isVirtual(offset);
+            if (c != '-') offset++;
+        }
+        return retVal;
     }
 
 

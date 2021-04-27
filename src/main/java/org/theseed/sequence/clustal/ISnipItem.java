@@ -4,6 +4,7 @@
 package org.theseed.sequence.clustal;
 
 import org.theseed.locations.Location;
+import org.theseed.sequence.ExtendedProteinRegion;
 
 /**
  * This interface represents an object that can function as a snip item.
@@ -46,5 +47,13 @@ public interface ISnipItem {
      * @return TRUE if this snip is significant (different from the base and the wild strains)
      */
     public boolean isSignificant();
+
+    /**
+     * @return TRUE if the differing portion of the snip is inside the contig
+     *
+     * @param base		base snip for comparison
+     * @param region	region containing the snip
+     */
+    public boolean isReal(String base, ExtendedProteinRegion region);
 
 }
