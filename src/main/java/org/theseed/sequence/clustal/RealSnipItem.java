@@ -121,15 +121,15 @@ public class RealSnipItem implements ISnipItem {
 
     @Override
     public boolean isReal(String base, ExtendedProteinRegion region) {
-        int offset = 0;
+        int offset2 = this.offset;
         boolean retVal = false;
         // Loop until we find a real difference.
         for (int i = 0; ! retVal && i < base.length(); i++) {
             char c = this.text.charAt(i);
             char cBase = base.charAt(i);
             if (c != cBase)
-                retVal = ! region.isVirtual(offset);
-            if (c != '-') offset++;
+                retVal = ! region.isVirtual(offset2);
+            if (c != '-') offset2++;
         }
         return retVal;
     }
