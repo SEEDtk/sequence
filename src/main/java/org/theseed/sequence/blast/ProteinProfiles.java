@@ -14,7 +14,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.theseed.genome.Feature;
 import org.theseed.io.TabbedLineReader;
+import org.theseed.proteins.Role;
 import org.theseed.proteins.RoleMap;
 
 /**
@@ -28,6 +32,8 @@ import org.theseed.proteins.RoleMap;
 public class ProteinProfiles {
 
     // FIELDS
+    /** logging facility */
+    protected static Logger log = LoggerFactory.getLogger(ProteinProfiles.class);
     /** role ID mapping to parse the functions */
     private RoleMap roleMap;
     /** cluster ID to function mapping */
@@ -45,12 +51,60 @@ public class ProteinProfiles {
      * @throws IOException
      */
     public ProteinProfiles(File profileDir) throws IOException {
+        setup(profileDir, null);
+    }
+
+    /**
+     * Construct a new protein profile.
+     *
+     * @param profileDir	profile directory
+     * @param roleFilter	set of roles to include (all other roles will be excluded)
+     *
+     * @throws IOException
+     */
+    public ProteinProfiles(File profileDir, Set<String> roleFilter) throws IOException {
+        setup(profileDir, roleFilter);
+    }
+    /**
+    /**
+     * Initialize a new protein profile.
+     *
+     * @param profileDir	profile directory
+     * @param roleFilter	set of roles to include (all other roles will be excluded)
+     *
+     * @throws IOException
+     * @throws FileNotFoundException
+     */
+    private void setup(File profileDir, Set<String> roleFilter) throws IOException, FileNotFoundException {
         this.profileDir = profileDir;
         this.roleMap = RoleMap.load(new File(profileDir, "_roles.tbl"));
+        // If we are filtering, we must remove the roles we are not using.
+        if (roleFilter != null) {
+            // This is a two-pass process so that we are not modifying the key set while streaming through it.
+            Set<String> badRoles = this.roleMap.keySet().stream().filter(x -> ! roleFilter.contains(x)).collect(Collectors.toSet());
+            badRoles.stream().forEach(x -> this.roleMap.remove(x));
+            log.info("{} roles kept after filtering.", this.roleMap.size());
+        }
         this.clusterMap = new HashMap<String, String>();
         try (TabbedLineReader clusterStream = new TabbedLineReader(new File(profileDir, "_map.tbl"), 2)) {
-            for (TabbedLineReader.Line line : clusterStream)
-                this.clusterMap.put(line.get(0), line.get(1));
+            int kept = 0;
+            int discarded = 0;
+            for (TabbedLineReader.Line line : clusterStream) {
+                String roleName = line.get(1);
+                String roleId = null;
+                String[] roleNames = Feature.rolesOfFunction(roleName);
+                for (String roleName0 : roleNames) {
+                    Role role = this.roleMap.getByName(roleName0);
+                    if (role != null)
+                        roleId = role.getId();
+                }
+                if (roleId != null) {
+                    this.clusterMap.put(line.get(0), roleName);
+                    kept++;
+                } else
+                    discarded++;
+            }
+            log.info("{} profiles kept, {} removed by filter.", kept, discarded);
         }
         // Verify that all the clusters exist.
         for (String cluster : this.clusterMap.keySet()) {
