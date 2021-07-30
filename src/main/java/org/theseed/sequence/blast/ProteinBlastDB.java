@@ -13,15 +13,14 @@ import org.theseed.sequence.DnaStream;
 import org.theseed.sequence.ProteinStream;
 
 /**
- * This manages a protein BLAST database.  The database
- * @author parrello
+ * This manages a protein BLAST database.
  *
  */
 public class ProteinBlastDB extends BlastDB {
 
     // FIELDS
     /** array of file suffixes */
-    private static final String[] SUFFIXES = new String[] { ".pin", ".psq", ".phr" };
+    public static final String[] SUFFIXES = new String[] { ".pin", ".psq", ".phr" };
 
     /**
      * Load an existing protein blast database.

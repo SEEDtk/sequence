@@ -7,11 +7,13 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -38,6 +40,8 @@ public class ProteinProfiles {
     private RoleMap roleMap;
     /** cluster ID to function mapping */
     private Map<String, String> clusterMap;
+    /** role ID to cluster list mapping */
+    private Map<String, Set<String>> roleClusterMap;
     /** directory containing the profiles */
     private File profileDir;
     /** number of profiles hit in last run */
@@ -85,26 +89,34 @@ public class ProteinProfiles {
             badRoles.stream().forEach(x -> this.roleMap.remove(x));
             log.info("{} roles kept after filtering.", this.roleMap.size());
         }
+        // Initialize the role-cluster map and the main cluster map.
+        this.roleClusterMap = new HashMap<String, Set<String>>(this.roleMap.size());
         this.clusterMap = new HashMap<String, String>();
+        // Read in the cluster map.
         try (TabbedLineReader clusterStream = new TabbedLineReader(new File(profileDir, "_map.tbl"), 2)) {
             int kept = 0;
             int discarded = 0;
             for (TabbedLineReader.Line line : clusterStream) {
                 String roleName = line.get(1);
-                String roleId = null;
                 String[] roleNames = Feature.rolesOfFunction(roleName);
+                Set<String> roleIds = new TreeSet<String>();
                 for (String roleName0 : roleNames) {
                     Role role = this.roleMap.getByName(roleName0);
                     if (role != null)
-                        roleId = role.getId();
+                        roleIds.add(role.getId());
                 }
-                if (roleId != null) {
+                if (! roleIds.isEmpty()) {
                     this.clusterMap.put(line.get(0), roleName);
                     kept++;
+                    // Add this cluster to the relevant role maps.
+                    for (String roleId : roleIds) {
+                        Set<String> clusterIds = this.roleClusterMap.computeIfAbsent(roleId, x -> new TreeSet<String>());
+                        clusterIds.add(roleId);
+                    }
                 } else
                     discarded++;
             }
-            log.info("{} profiles kept, {} removed by filter.", kept, discarded);
+            log.info("{} profiles kept, {} removed by filter, {} roles with profiles.", kept, discarded);
         }
         // Verify that all the clusters exist.
         for (String cluster : this.clusterMap.keySet()) {
@@ -124,18 +136,78 @@ public class ProteinProfiles {
     }
 
     /**
-     * @return a map listing the profile hits against each subject sequence in the specified blast database
+     * @return the set of roles covered by profiles
+     */
+    public Set<String> getRoles() {
+        return this.roleClusterMap.keySet();
+    }
+
+    /**
+     * Blast all the profiles.
      *
      * @param blastDB	blast database to process against the profiles
      * @param parms		BLAST parameters to use
      *
+     * @return a map listing the profile hits against each subject sequence in the specified blast database
+     *
      */
     public Map<String, List<BlastHit>> profile(BlastDB blastDB, BlastParms parms) {
+        Set<String> clusterSet = this.clusterMap.keySet();
+        return blastProfiles(clusterSet, blastDB, parms);
+    }
+
+    /**
+     * Blast the profiles for the selected roles.
+     *
+     * @param blastDB	blast database to process against the profiles
+     * @param parms		BLAST parameters to use
+     *
+     * @return a map listing the profile hits against each subject sequence in the specified blast database
+     */
+    public Map<String, Set<BlastHit>> profile(Collection<String> roles, BlastDB blastDB, BlastParms parms) {
+        Map<String, Set<BlastHit>> retVal = new HashMap<String, Set<BlastHit>>(roles.size());
+        // Create a map of cluster IDs to role IDs.
+        Map<String, Set<String>> clusterRoles = new HashMap<String, Set<String>>(roles.size() * 5);
+        for (String role : roles) {
+            Set<String> roleClusters = this.roleClusterMap.get(role);
+            if (roleClusters != null) {
+                for (String cluster : roleClusters) {
+                    Set<String> rolesForCluster = clusterRoles.computeIfAbsent(cluster, x -> new TreeSet<String>());
+                    rolesForCluster.add(role);
+                }
+            }
+        }
+        // Now we have a map of the roles for each cluster.  This will be used to convert the output to a hash keyed on
+        // role ID.  Get the hits.
+        Map<String, List<BlastHit>> hitMap = this.blastProfiles(clusterRoles.keySet(), blastDB, parms);
+        // Convert this map to a role-based map.  For each cluster, we add all the cluster's hits to each of the cluster's
+        // roles.
+        for (Map.Entry<String, List<BlastHit>> hitEntry : hitMap.entrySet()) {
+            String cluster = hitEntry.getKey();
+            for (String role : clusterRoles.get(cluster)) {
+                Set<BlastHit> hitSet = retVal.computeIfAbsent(role, x -> new HashSet<BlastHit>());
+                hitSet.addAll(hitEntry.getValue());
+            }
+        }
+        // Return the role-to-hit map.
+        return retVal;
+    }
+
+    /**
+     * Blast the specified clusters against a blast database.
+     *
+     * @param clusterSet	set of cluster IDs for the clusters to blast
+     * @param blastDB		target blast database
+     * @param parms			blast parameters to use
+     *
+     * @return a map listing the profile hits against each subject sequence in the specified blast database
+     */
+    private Map<String, List<BlastHit>> blastProfiles(Set<String> clusterSet, BlastDB blastDB, BlastParms parms) {
         Map<String, List<BlastHit>> retVal = new HashMap<String, List<BlastHit>>();
         // We run the BLASTs in parallel.  The "map" blasts the cluster, "flatMap"
         // converts a stream of lists to a stream of blast hits, and "collect"
         // converts the stream back to a single list.
-        List<BlastHit> results = this.clusterMap.keySet().parallelStream()
+        List<BlastHit> results = clusterSet.parallelStream()
                 .map(x -> blastDB.psiBlast(this.getFile(x), parms, this.clusterMap))
                 .flatMap(List::stream).collect(Collectors.toList());
         // This will track the profiles hit.
