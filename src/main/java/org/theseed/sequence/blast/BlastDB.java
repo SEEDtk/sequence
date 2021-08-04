@@ -63,6 +63,8 @@ public abstract class BlastDB {
     private static int runCount = 0;
     /** display name for database */
     private String name;
+    /** flag for quiet blasting */
+    private static boolean QUIET_MODE = false;
 
     /**
      * Construct a blank BLAST database.
@@ -336,7 +338,8 @@ public abstract class BlastDB {
                     hitList.add(result);
             }
             runCount++;
-            log.info("{} results from BLAST #{}, {} returned.", count, runCount, hitList.size());
+            if (! QUIET_MODE)
+                log.info("{} results from BLAST #{}, {} returned.", count, runCount, hitList.size());
         }
     }
 
@@ -601,6 +604,20 @@ public abstract class BlastDB {
             return this.description;
         }
 
+    }
+
+    /**
+     * Turn off logging for individual BLAST runs.
+     */
+    public static void setQuiet() {
+        QUIET_MODE = true;
+    }
+
+    /**
+     * Turn on logging for individual BLAST runs.
+     */
+    public static void setNoisy() {
+        QUIET_MODE = false;
     }
 
 }

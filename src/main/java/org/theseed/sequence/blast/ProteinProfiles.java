@@ -106,17 +106,18 @@ public class ProteinProfiles {
                         roleIds.add(role.getId());
                 }
                 if (! roleIds.isEmpty()) {
-                    this.clusterMap.put(line.get(0), roleName);
+                    String clusterId = line.get(0);
+                    this.clusterMap.put(clusterId, roleName);
                     kept++;
                     // Add this cluster to the relevant role maps.
                     for (String roleId : roleIds) {
                         Set<String> clusterIds = this.roleClusterMap.computeIfAbsent(roleId, x -> new TreeSet<String>());
-                        clusterIds.add(roleId);
+                        clusterIds.add(clusterId);
                     }
                 } else
                     discarded++;
             }
-            log.info("{} profiles kept, {} removed by filter, {} roles with profiles.", kept, discarded);
+            log.info("{} profiles kept, {} removed by filter, {} roles with profiles.", kept, discarded, this.roleClusterMap.size());
         }
         // Verify that all the clusters exist.
         for (String cluster : this.clusterMap.keySet()) {
@@ -182,11 +183,14 @@ public class ProteinProfiles {
         Map<String, List<BlastHit>> hitMap = this.blastProfiles(clusterRoles.keySet(), blastDB, parms);
         // Convert this map to a role-based map.  For each cluster, we add all the cluster's hits to each of the cluster's
         // roles.
-        for (Map.Entry<String, List<BlastHit>> hitEntry : hitMap.entrySet()) {
-            String cluster = hitEntry.getKey();
-            for (String role : clusterRoles.get(cluster)) {
-                Set<BlastHit> hitSet = retVal.computeIfAbsent(role, x -> new HashSet<BlastHit>());
-                hitSet.addAll(hitEntry.getValue());
+        for (List<BlastHit> hitList : hitMap.values()) {
+            for (BlastHit hit : hitList) {
+                String cluster = hit.getQueryLoc().getContigId();
+                Set<String> rolesFound = clusterRoles.get(cluster);
+                for (String role : rolesFound) {
+                    Set<BlastHit> hitSet = retVal.computeIfAbsent(role, x -> new HashSet<BlastHit>());
+                    hitSet.add(hit);
+                }
             }
         }
         // Return the role-to-hit map.
