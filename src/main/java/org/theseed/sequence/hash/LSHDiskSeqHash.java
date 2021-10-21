@@ -158,7 +158,7 @@ public class LSHDiskSeqHash extends LSHSeqHash implements AutoCloseable {
                     log.debug("Loading bucket from {} into cache.", bucketFile);
                     retVal = Bucket.load(bucketFile);
                 } catch (Exception e) {
-                    throw new RuntimeException("Error loading bucket file " + bucketFile + ": " + e.getMessage());
+                    throw new RuntimeException("Error loading bucket file " + bucketFile + ": " + e.toString());
                 }
             } else {
                 retVal = new Bucket();

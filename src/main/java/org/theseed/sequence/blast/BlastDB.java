@@ -292,7 +292,7 @@ public abstract class BlastDB {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         } catch (InterruptedException e) {
-            throw new RuntimeException("Interrupted BLAST execution: " + e.getMessage(), e);
+            throw new RuntimeException("Interrupted BLAST execution: " + e.toString(), e);
         }
 
         return retVal;
