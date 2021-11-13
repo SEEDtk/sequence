@@ -1,6 +1,6 @@
 package org.theseed.sequence;
 
-import junit.framework.TestCase;
+import org.junit.jupiter.api.Test;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 
@@ -11,8 +11,9 @@ import java.util.List;
 
 import org.theseed.sequence.clustal.ClustalPipeline;
 
-public class ClustalTest extends TestCase {
+public class ClustalTest  {
 
+    @Test
     public void testClustal() throws IOException, InterruptedException {
         ClustalPipeline tester = new ClustalPipeline(new File("data", "seedprot.fa"));
         List<Sequence> output = tester.run();

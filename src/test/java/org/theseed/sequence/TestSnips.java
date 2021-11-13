@@ -12,7 +12,7 @@ import org.theseed.sequence.clustal.RealSnipItem;
 import org.theseed.sequence.clustal.SnipColumn;
 import org.theseed.sequence.clustal.SnipIterator;
 
-import junit.framework.TestCase;
+import org.junit.jupiter.api.Test;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 
@@ -27,8 +27,9 @@ import java.util.TreeSet;
  * @author Bruce Parrello
  *
  */
-public class TestSnips extends TestCase {
+public class TestSnips {
 
+    @Test
     public void testSnipItems() {
         RealSnipItem is = new RealSnipItem("aa-", 100, 2);
         assertThat(is.getLen(), equalTo(2));
@@ -42,21 +43,23 @@ public class TestSnips extends TestCase {
         assertThat(is.getLocString(loc2), equalTo("contig2_1900-0"));
     }
 
+    @Test
     public void testSnipAnalysis() throws IOException {
         Genome gto = new Genome(new File("data", "1313.5684.gto"));
         Feature feat = gto.getFeature("fig|1313.5684.peg.2088");
         ExtendedProteinRegion region = new ExtendedProteinRegion(feat, 100);
         RealSnipItem is = new RealSnipItem("aaa--atg-caacta--ttg-a", 97, 15);
         String[] aaMap = is.getProteinMap(region);
-        assertThat(aaMap, arrayContaining("extron", "extron", "extron", "Methionine", "Methionine", "Methionine", "Methionine", "Methionine",
+        assertThat(aaMap, arrayContaining("upstream", "upstream", "upstream", "Methionine", "Methionine", "Methionine", "Methionine", "Methionine",
                 "Serine", "Serine", "Serine", "Serine", "Threonine", "Threonine", "Threonine", "Isoleucine", "Isoleucine",
                 "Isoleucine", "Isoleucine", "Isoleucine", "Glutamic Acid", "Glutamic Acid"));
         is = new RealSnipItem("taaataa---", 1137, 7);
         aaMap = is.getProteinMap(region);
         assertThat(aaMap, arrayContaining("Glutamine", "Phenylalanine", "Phenylalanine", "Phenylalanine", "Lysine", "Lysine",
-                "Lysine", "gap", "gap", "gap"));
+                "Lysine", "stop", "stop", "stop"));
     }
 
+    @Test
     public void testSnipIterator() throws IOException, InterruptedException {
         RegionList phesRegions = new RegionList();
         Genome gto = new Genome(new File("data", "1313.5684.gto"));

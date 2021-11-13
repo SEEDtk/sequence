@@ -3,7 +3,7 @@
  */
 package org.theseed.sequence;
 
-import junit.framework.TestCase;
+import org.junit.jupiter.api.Test;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 
@@ -16,9 +16,10 @@ import org.theseed.sequence.hash.Bucket;
 import org.theseed.sequence.hash.LSHDiskSeqHash;
 import org.theseed.sequence.hash.Sketch;
 
-public class DiskHashTest extends TestCase {
+public class DiskHashTest {
 
 
+    @Test
     public void testLSHDiskSeqHash() throws IOException {
         ProteinKmers.setKmerSize(8);
         LSHDiskSeqHash.setCacheLimit(100);

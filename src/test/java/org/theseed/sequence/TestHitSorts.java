@@ -12,7 +12,7 @@ import org.theseed.io.LineReader;
 import org.theseed.io.Shuffler;
 import org.theseed.sequence.blast.BlastHit;
 
-import junit.framework.TestCase;
+import org.junit.jupiter.api.Test;
 import static org.hamcrest.Matchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -22,8 +22,9 @@ import static org.hamcrest.MatcherAssert.assertThat;
  * @author Bruce Parrello
  *
  */
-public class TestHitSorts extends TestCase {
+public class TestHitSorts  {
 
+    @Test
     public void testSorts() throws IOException {
         Shuffler<BlastHit> results0 = new Shuffler<BlastHit>(15);
         Map<String, String> qMap = new HashMap<String, String>();

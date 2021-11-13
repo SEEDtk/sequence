@@ -12,10 +12,11 @@ import java.util.List;
 import org.theseed.genome.Contig;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
-import junit.framework.TestCase;
+import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
+import static org.theseed.test.Matchers.*;
 
 /**
  * Test the DNA and protein streams
@@ -23,8 +24,9 @@ import static org.hamcrest.Matchers.*;
  * @author parrello
  *
  */
-public class StreamTest extends TestCase {
+public class StreamTest  {
 
+    @Test
     public void testDnaStreams() throws IOException {
         Genome gto = new Genome(new File("data", "360106.5.gto"));
         File testFile = new File("data", "fasta.ser");
@@ -73,7 +75,7 @@ public class StreamTest extends TestCase {
             count = 0;
             while (iter.hasNext()) {
                 SequenceDataStream batch = iter.next();
-                assertFalse(batch.isProtein());
+                assertThat(batch.isProtein(), isFalse());
                 assertThat(batch.size(), lessThanOrEqualTo(5));
                 assertThat(((DnaStream) batch).getGeneticCode(), equalTo(11));
                 for (Sequence seq : batch) {
@@ -88,6 +90,7 @@ public class StreamTest extends TestCase {
         }
     }
 
+    @Test
     public void testProteinStreams() throws IOException {
         Genome gto = new Genome(new File("data", "360106.5.gto"));
         File testFile = new File("data", "fasta.ser");
@@ -133,7 +136,7 @@ public class StreamTest extends TestCase {
             count = 0;
             while (iter.hasNext()) {
                 SequenceDataStream batch = iter.next();
-                assertTrue(batch.isProtein());
+                assertThat(batch.isProtein(), isTrue());
                 assertThat(batch.size(), lessThanOrEqualTo(5));
                 for (Sequence seq : batch) {
                     String pegId = seq.getLabel();

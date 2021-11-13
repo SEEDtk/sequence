@@ -20,11 +20,13 @@ import org.theseed.sequence.blast.ProteinBlastDB;
 
 import org.theseed.sequence.blast.BlastHit;
 import org.theseed.sequence.blast.BlastParms;
-
-import junit.framework.TestCase;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
+import static org.theseed.test.Matchers.*;
 
 /**
  *
@@ -33,21 +35,26 @@ import static org.hamcrest.Matchers.*;
  * @author Bruce Parrello
  *
  */
-public class BlastTest extends TestCase {
+public class BlastTest  {
 
-    private final File tempDir = new File("data", "temp");
+    private static final File tempDir = new File("data", "temp");
 
-    @Override
-    protected void setUp() throws Exception {
+    @BeforeAll
+    protected static void setUp() throws Exception {
         // Set up our temp directory for blast files.
         if (! tempDir.isDirectory())
             FileUtils.forceMkdir(tempDir);
+    }
+
+    @AfterAll
+    protected static void tearDown() throws Exception {
+        // Clean the temp directory for blast files.
         FileUtils.cleanDirectory(tempDir);
     }
 
+    @Test
     public void testFasta() throws IOException, InterruptedException {
         File gtoFile = new File("data", "1313.7001.gto");
-        FileUtils.cleanDirectory(tempDir);
         Genome gto = new Genome(gtoFile);
         // Create and test a DNA database.
         File fastaFile = new File(tempDir, "temp.fna");
@@ -80,6 +87,7 @@ public class BlastTest extends TestCase {
         assertThat(checkFile.lastModified(), greaterThanOrEqualTo(fastaFile.lastModified()));
     }
 
+    @Test
     public void testBlastParms() {
         BlastParms parms = new BlastParms().set("-a").set("-b", 100).db_gencode(11).maxE(1e-20)
                 .maxPerQuery(5).minPercent(50).num_threads(6).query_gencode(4).pctLenOfQuery(0.5)
@@ -93,6 +101,7 @@ public class BlastTest extends TestCase {
 
     }
 
+    @Test
     public void testActualBlast() throws IOException, InterruptedException, CloneNotSupportedException {
         Genome g2 = new Genome(new File("data", "1685.390.gto"));
         File g1Pegs = new File("data", "g1.faa");
@@ -252,6 +261,7 @@ public class BlastTest extends TestCase {
      * test the result sort
      * @throws IOException
      */
+    @Test
     public void testResultSort() throws IOException {
         List<BlastHit> results0 = new ArrayList<BlastHit>(15);
         Map<String, String> qMap = new HashMap<String, String>();
@@ -279,7 +289,7 @@ public class BlastTest extends TestCase {
             List<BlastHit> list = entry.getValue();
             for (BlastHit result : list) {
                 assertThat(result.getQueryId(), equalTo(entry.getKey()));
-                assertTrue(results0.contains(result));
+                assertThat(results0.contains(result), isTrue());
             }
 
         }

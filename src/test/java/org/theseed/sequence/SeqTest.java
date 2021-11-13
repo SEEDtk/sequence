@@ -3,9 +3,8 @@
  */
 package org.theseed.sequence;
 
-import junit.framework.Test;
-import junit.framework.TestCase;
-import junit.framework.TestSuite;
+
+import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
@@ -33,25 +32,7 @@ import org.theseed.sequence.hash.Sketch;
  * @author Bruce Parrello
  *
  */
-public class SeqTest extends TestCase {
-
-    /**
-     * Create the test case
-     *
-     * @param testName name of the test case
-     */
-    public SeqTest( String testName )
-    {
-        super( testName );
-    }
-
-    /**
-     * @return the suite of tests being tested
-     */
-    public static Test suite()
-    {
-        return new TestSuite( SeqTest.class );
-    }
+public class SeqTest {
 
     /** test proteins */
     public static String p1 = "MDIQITHQVTEFDKEELLAGLRSYNAQFVDFSKNGQLGVYCRNESGEMVGGLIADRKGPWLCIDYLWVSESARNCGLGSKLMAMAEKEGLRKGCAHGLVD";
@@ -75,6 +56,7 @@ public class SeqTest extends TestCase {
     private static final int[] JUMBLE5 = new int[] { 63, 2, 36, 47, 52, 61, 37, 80, 5, 98, 46, 39, 49, 57, 88, 17, 86, 32, 74, 25, 87, 48, 34, 95, 97, 27, 77, 13, 78, 66, 28, 53, 9, 3, 70, 60, 21, 11, 7, 24, 59, 31, 69, 73, 94, 76, 91, 43, 20, 89};
     private static final int[][] JUMBLES = new int[][] { JUMBLE1, JUMBLE2, JUMBLE3, JUMBLE4, JUMBLE5 };
 
+    @Test
     public void testSeqHash() {
         ProteinKmers.setKmerSize(8);
         // We will test using a set of protein kmers.  There will be five very different starting proteins
@@ -128,6 +110,7 @@ public class SeqTest extends TestCase {
      * @param prots		array of starting proteins
      * @param hash		hash to fill
      */
+    @Test
     public static void createTestingHash(String[] prots, LSHSeqHash hash) {
         for (int i = 0; i < prots.length; i++) {
             String p = prots[i];
@@ -154,6 +137,7 @@ public class SeqTest extends TestCase {
      * test sequence hashing using protein families
      * @throws IOException
      */
+    @Test
     public void testProtFamilies() throws IOException {
         // Create the hash.
         LSHMemSeqHash seqHash = new LSHMemSeqHash(250, 25, 100);
@@ -196,6 +180,7 @@ public class SeqTest extends TestCase {
     /**
      * test traversal
      */
+    @Test
     public void testIterator() {
         LSHMemSeqHash hash = new LSHMemSeqHash(10, 10, 200);
         hash.add(k1, "p1");
@@ -220,6 +205,7 @@ public class SeqTest extends TestCase {
      *
      * @return the mutated protein
      */
+    @Test
     private static String mutate(String prot, int pos) {
         char[] acids = prot.toCharArray();
         char aa = acids[pos];

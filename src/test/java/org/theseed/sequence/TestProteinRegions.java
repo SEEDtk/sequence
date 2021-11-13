@@ -3,7 +3,7 @@
  */
 package org.theseed.sequence;
 
-import junit.framework.TestCase;
+import org.junit.jupiter.api.Test;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 
@@ -23,13 +23,14 @@ import org.theseed.proteins.FunctionMap;
  * @author Bruce Parrello
  *
  */
-public class TestProteinRegions extends TestCase {
+public class TestProteinRegions {
 
     /**
      * test ExtendedProteinRegion
      *
      * @throws IOException
      */
+    @Test
     public void testProteinRegions() throws IOException {
         Genome gto = new Genome(new File("data", "1313.7001.gto"));
         Feature feat = gto.getFeature("fig|1313.7001.peg.326");

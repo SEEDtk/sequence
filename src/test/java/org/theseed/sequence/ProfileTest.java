@@ -4,6 +4,8 @@
 package org.theseed.sequence;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.*;
+import static org.theseed.test.Matchers.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -23,27 +25,18 @@ import org.theseed.sequence.blast.DnaBlastDB;
 import org.theseed.sequence.blast.ProteinBlastDB;
 import org.theseed.sequence.blast.ProteinProfiles;
 
-import junit.framework.TestCase;
-import static org.hamcrest.Matchers.*;
+import org.junit.jupiter.api.Test;
+
 
 /**
  * @author Bruce Parrello
  *
  */
-public class ProfileTest extends TestCase {
+public class ProfileTest  {
 
     private final File tempDir = new File("data", "temp");
 
-    public ProfileTest() {
-    }
-
-    /**
-     * @param name
-     */
-    public ProfileTest(String name) {
-        super(name);
-    }
-
+    @Test
     public void testPsiBlast() throws IOException, InterruptedException {
         Genome g2 = new Genome(new File("data", "1685.390.gto"));
         BlastDB gdb = DnaBlastDB.create(new File(tempDir, "pblast.fa"), g2);
@@ -54,13 +47,14 @@ public class ProfileTest extends TestCase {
         List<BlastHit> results = gdb.psiBlast(pFile, parms, qMap);
         assertThat(results.size(), equalTo(1));
         Feature feat = g2.getFeature("fig|1685.390.peg.2038");
-        assertTrue(feat.getLocation().contains(results.get(0).getSubjectLoc()));
+        assertThat(feat.getLocation().contains(results.get(0).getSubjectLoc()), isTrue());
         gdb = ProteinBlastDB.create(new File(tempDir, "pblast2.fa"), g2);
         results = gdb.psiBlast(pFile, parms, qMap);
         assertThat(results.size(), equalTo(1));
         assertThat(results.get(0).getSubjectId(), equalTo("fig|1685.390.peg.2038"));
     }
 
+    @Test
     public void testProfiles() throws IOException, InterruptedException {
         Genome g2 = new Genome(new File("data", "1685.390.gto"));
         DnaBlastDB gdb = DnaBlastDB.create(new File(tempDir, "pblast.fa"), g2);

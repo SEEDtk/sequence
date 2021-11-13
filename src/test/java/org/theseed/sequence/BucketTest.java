@@ -3,9 +3,10 @@
  */
 package org.theseed.sequence;
 
-import junit.framework.TestCase;
+import org.junit.jupiter.api.Test;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
+import static org.theseed.test.Matchers.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -21,7 +22,7 @@ import org.theseed.sequence.hash.Sketch;
  * @author Bruce Parrello
  *
  */
-public class BucketTest extends TestCase {
+public class BucketTest {
 
     private String p1 = "MDIQITHQVTEFDKEELLAGLRSYNAQFVDFSKNGQLGVYCRNESGEMVGGLIADRKGPWLCIDYLWVSESARNCGLGSKLMAMAEKEGLRKGCAHGLVD";
     private String p2 = "MSKDEISYQILYRYSLEKLYSTLTRRVDNVLSFALIFLGVGVTINVGSPFILGPGIVGIAILKRVLRFGTRSAQADRQSRAWLKLFNTQHRFPSDKTLFL";
@@ -32,12 +33,13 @@ public class BucketTest extends TestCase {
     /**
      * test sketch operations
      */
+    @Test
     public void testSketch() {
         String p12 = p1 + p2;
         ProteinKmers kmers1 = new ProteinKmers(p12);
         int[] signature = kmers1.hashSet(50);
         Sketch sketch1 = new Sketch(p12, "p12", 50);
-        assertTrue(Arrays.equals(signature, sketch1.getSignature()));
+        assertThat(Arrays.equals(signature, sketch1.getSignature()), isTrue());
         assertThat(sketch1.getName(), equalTo("p12"));
         String p21 = p2 + p1;
         Sketch sketch2 = new Sketch(p21, "p21", 50);
@@ -46,12 +48,13 @@ public class BucketTest extends TestCase {
         assertThat(dist, equalTo(dist2));
         assertThat(dist, closeTo(0.148, 0.001));
         Sketch sketch1a = new Sketch(signature, "p12a");
-        assertTrue(sketch1a.isSameSignature(sketch1));
+        assertThat(sketch1a.isSameSignature(sketch1), isTrue());
     }
 
     /**
      * test bucket search
      */
+    @Test
     public void testSearch() {
         Bucket testBucket = new Bucket();
         Sketch sketch1 = new Sketch(p1, "g1", 360);
@@ -71,7 +74,7 @@ public class BucketTest extends TestCase {
             assertThat(fSketch.getName(), equalTo("g1"));
         found = testBucket.search("p3");
         assertThat(found.size(), equalTo(1));
-        assertTrue(found.get(0) == sketch3);
+        assertThat(found.get(0) == sketch3, isTrue());
         assertThat(testBucket.get(2).getName(), equalTo("p3"));
         List<Sketch> subList = testBucket.after(1);
         assertThat(subList.size(), equalTo(3));
@@ -84,6 +87,7 @@ public class BucketTest extends TestCase {
      * @throws IOException
      * @throws ClassNotFoundException
      */
+    @Test
     public void testBucketFiles() throws IOException, ClassNotFoundException {
         // The plan is to read a file of proteins and store them as sketches with their MD5 identifier.  We will
         // write out the sketches as a bucket file, then read them back in and verify that all the sketches are
@@ -104,34 +108,34 @@ public class BucketTest extends TestCase {
             }
         }
         // Now we write out the bucket.
-        assertTrue(original.isModified());
+        assertThat(original.isModified(), isTrue());
         File saveFile = new File("data", "bucket.ser");
         original.save(saveFile);
-        assertFalse(original.isModified());
+        assertThat(original.isModified(), isFalse());
         // Read in a copy.
         Bucket saved = Bucket.load(saveFile);
         assertThat(saved.size(), equalTo(original.size()));
-        assertFalse(saved.isModified());
+        assertThat(saved.isModified(), isFalse());
         // The buckets should compare different.
-        assertFalse(saved.compareTo(original) == 0);
+        assertThat(saved.compareTo(original) == 0, isFalse());
         // Veryify the sketches are the same.
         for (Sketch oSketch : original) {
             List<Sketch> found = saved.search(oSketch.getName());
             assertThat(found.size(), equalTo(1));
             Sketch fSketch = found.get(0);
             assertThat(fSketch.getName(), equalTo(oSketch.getName()));
-            assertTrue(fSketch.isSameSignature(oSketch));
+            assertThat(fSketch.isSameSignature(oSketch), isTrue());
         }
         // Verify that we can add a new sketch.
         Sketch newSketch = new Sketch(p1, "p1", 360);
         saved.add(newSketch);
-        assertTrue(saved.isModified());
+        assertThat(saved.isModified(), isTrue());
         assertThat(saved.size(), equalTo(original.size() + 1));
         List<Sketch> found = saved.search("p1");
         assertThat(found.size(), equalTo(1));
         Sketch fSketch = found.get(0);
         assertThat(fSketch.getName(), equalTo("p1"));
-        assertTrue(fSketch.isSameSignature(newSketch));
+        assertThat(fSketch.isSameSignature(newSketch), isTrue());
     }
 
     /**
@@ -140,6 +144,7 @@ public class BucketTest extends TestCase {
      * @throws IOException
      * @throws ClassNotFoundException
      */
+    @Test
     public void testEmptyBucket() throws IOException, ClassNotFoundException {
         Bucket testBucket = new Bucket();
         File emptyBucketFile = new File("data", "empty.ser");
@@ -151,6 +156,7 @@ public class BucketTest extends TestCase {
     /**
      * Test bucket comparison.
      */
+    @Test
     public void testBucketCompare() {
         Bucket testBucket = new Bucket();
         Sketch sketch1 = new Sketch(p1, "g1", 360);
