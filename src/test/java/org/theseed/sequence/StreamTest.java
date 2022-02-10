@@ -16,7 +16,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
-import static org.theseed.test.Matchers.*;
 
 /**
  * Test the DNA and protein streams
@@ -75,7 +74,7 @@ public class StreamTest  {
             count = 0;
             while (iter.hasNext()) {
                 SequenceDataStream batch = iter.next();
-                assertThat(batch.isProtein(), isFalse());
+                assertThat(batch.isProtein(), equalTo(false));
                 assertThat(batch.size(), lessThanOrEqualTo(5));
                 assertThat(((DnaStream) batch).getGeneticCode(), equalTo(11));
                 for (Sequence seq : batch) {
@@ -136,7 +135,7 @@ public class StreamTest  {
             count = 0;
             while (iter.hasNext()) {
                 SequenceDataStream batch = iter.next();
-                assertThat(batch.isProtein(), isTrue());
+                assertThat(batch.isProtein(), equalTo(true));
                 assertThat(batch.size(), lessThanOrEqualTo(5));
                 for (Sequence seq : batch) {
                     String pegId = seq.getLabel();

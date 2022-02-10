@@ -17,7 +17,6 @@ import org.theseed.sequence.blast.Source;
 import org.junit.jupiter.api.Test;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
-import static org.theseed.test.Matchers.*;
 
 /**
  * Test BLAST sources
@@ -34,26 +33,26 @@ public class SourceTest {
         File dnaFile = new File("data", "g1.fna");
         File pFile = new File("data", "g1.faa");
         BlastDB db = Source.contigs.subject(tempDir, gFile, 4, false);
-        assertThat(db.isProtein(), isFalse());
+        assertThat(db.isProtein(), equalTo(false));
         assertThat(db, instanceOf(DnaBlastDB.class));
         BlastDB db2 = Source.db.subject(tempDir, db.getFile(), 0, true);
-        assertThat(db2.isProtein(), isFalse());
+        assertThat(db2.isProtein(), equalTo(false));
         assertThat(db2.getFile(), equalTo(db.getFile()));
         assertThat(db2, instanceOf(DnaBlastDB.class));
         assertThat(((DnaBlastDB) db2).getGeneticCode(), equalTo(11));
         db = Source.dna.subject(tempDir, dnaFile, 1, false);
-        assertThat(db.isProtein(), isFalse());
+        assertThat(db.isProtein(), equalTo(false));
         assertThat(((DnaBlastDB) db).getGeneticCode(), equalTo(1));
         assertThat(db.getFile(), equalTo(dnaFile));
         db = Source.features.subject(tempDir, gFile, 0, false);
-        assertThat(db.isProtein(), isFalse());
+        assertThat(db.isProtein(), equalTo(false));
         assertThat(db, instanceOf(DnaBlastDB.class));
         assertThat(((DnaBlastDB) db).getGeneticCode(), equalTo(11));
         db = Source.pegs.subject(tempDir, gFile, 0, false);
-        assertThat(db.isProtein(), isTrue());
+        assertThat(db.isProtein(), equalTo(true));
         assertThat(db, instanceOf(ProteinBlastDB.class));
         db = Source.prot.subject(tempDir, pFile, 0, false);
-        assertThat(db.isProtein(), isTrue());
+        assertThat(db.isProtein(), equalTo(true));
         assertThat(db.getFile(), equalTo(pFile));
         assertThat(db, instanceOf(ProteinBlastDB.class));
     }
@@ -66,26 +65,26 @@ public class SourceTest {
         File pFile = new File("data", "g1.faa");
         File dbFile = new File("data", "target.fa");
         SequenceStream s = Source.contigs.query(tempDir, gFile, 0);
-        assertThat(s.isProtein(), isFalse());
+        assertThat(s.isProtein(), equalTo(false));
         assertThat(s, instanceOf(DnaStream.class));
         assertThat(((DnaStream) s).getGeneticCode(), equalTo(11));
         s = Source.db.query(tempDir, dbFile, 0);
-        assertThat(s.isProtein(), isFalse());
+        assertThat(s.isProtein(), equalTo(false));
         assertThat(s, instanceOf(DnaStream.class));
         assertThat(((DnaStream) s).getGeneticCode(), equalTo(4));
         s = Source.dna.query(tempDir, dnaFile, 1);
-        assertThat(s.isProtein(), isFalse());
+        assertThat(s.isProtein(), equalTo(false));
         assertThat(s, instanceOf(DnaStream.class));
         assertThat(((DnaStream) s).getGeneticCode(), equalTo(1));
         s = Source.features.query(tempDir, gFile, 0);
-        assertThat(s.isProtein(), isFalse());
+        assertThat(s.isProtein(), equalTo(false));
         assertThat(s, instanceOf(DnaStream.class));
         assertThat(((DnaStream) s).getGeneticCode(), equalTo(11));
         s = Source.pegs.query(tempDir, gFile, 0);
-        assertThat(s.isProtein(), isTrue());
+        assertThat(s.isProtein(), equalTo(true));
         assertThat(s, instanceOf(ProteinStream.class));
         s = Source.prot.query(tempDir, pFile, 0);
-        assertThat(s.isProtein(), isTrue());
+        assertThat(s.isProtein(), equalTo(true));
         assertThat(s, instanceOf(ProteinStream.class));
     }
 
@@ -100,7 +99,7 @@ public class SourceTest {
         assertThat(stream.getGeneticCode(), equalTo(gto.getGeneticCode()));
         Iterator<Sequence> iter = stream.iterator();
         for (Contig contig : gto.getContigs()) {
-            assertThat(iter.hasNext(), isTrue());
+            assertThat(iter.hasNext(), equalTo(true));
             Sequence seq = iter.next();
             assertThat(seq.getLabel(), equalTo(contig.getId()));
             assertThat(seq.getComment(), equalTo(contig.getDescription()));

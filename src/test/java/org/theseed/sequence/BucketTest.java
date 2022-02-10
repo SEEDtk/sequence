@@ -6,7 +6,6 @@ package org.theseed.sequence;
 import org.junit.jupiter.api.Test;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
-import static org.theseed.test.Matchers.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -39,7 +38,7 @@ public class BucketTest {
         ProteinKmers kmers1 = new ProteinKmers(p12);
         int[] signature = kmers1.hashSet(50);
         Sketch sketch1 = new Sketch(p12, "p12", 50);
-        assertThat(Arrays.equals(signature, sketch1.getSignature()), isTrue());
+        assertThat(Arrays.equals(signature, sketch1.getSignature()), equalTo(true));
         assertThat(sketch1.getName(), equalTo("p12"));
         String p21 = p2 + p1;
         Sketch sketch2 = new Sketch(p21, "p21", 50);
@@ -48,7 +47,7 @@ public class BucketTest {
         assertThat(dist, equalTo(dist2));
         assertThat(dist, closeTo(0.148, 0.001));
         Sketch sketch1a = new Sketch(signature, "p12a");
-        assertThat(sketch1a.isSameSignature(sketch1), isTrue());
+        assertThat(sketch1a.isSameSignature(sketch1), equalTo(true));
     }
 
     /**
@@ -74,7 +73,7 @@ public class BucketTest {
             assertThat(fSketch.getName(), equalTo("g1"));
         found = testBucket.search("p3");
         assertThat(found.size(), equalTo(1));
-        assertThat(found.get(0) == sketch3, isTrue());
+        assertThat(found.get(0) == sketch3, equalTo(true));
         assertThat(testBucket.get(2).getName(), equalTo("p3"));
         List<Sketch> subList = testBucket.after(1);
         assertThat(subList.size(), equalTo(3));
@@ -108,34 +107,34 @@ public class BucketTest {
             }
         }
         // Now we write out the bucket.
-        assertThat(original.isModified(), isTrue());
+        assertThat(original.isModified(), equalTo(true));
         File saveFile = new File("data", "bucket.ser");
         original.save(saveFile);
-        assertThat(original.isModified(), isFalse());
+        assertThat(original.isModified(), equalTo(false));
         // Read in a copy.
         Bucket saved = Bucket.load(saveFile);
         assertThat(saved.size(), equalTo(original.size()));
-        assertThat(saved.isModified(), isFalse());
+        assertThat(saved.isModified(), equalTo(false));
         // The buckets should compare different.
-        assertThat(saved.compareTo(original) == 0, isFalse());
+        assertThat(saved.compareTo(original) == 0, equalTo(false));
         // Veryify the sketches are the same.
         for (Sketch oSketch : original) {
             List<Sketch> found = saved.search(oSketch.getName());
             assertThat(found.size(), equalTo(1));
             Sketch fSketch = found.get(0);
             assertThat(fSketch.getName(), equalTo(oSketch.getName()));
-            assertThat(fSketch.isSameSignature(oSketch), isTrue());
+            assertThat(fSketch.isSameSignature(oSketch), equalTo(true));
         }
         // Verify that we can add a new sketch.
         Sketch newSketch = new Sketch(p1, "p1", 360);
         saved.add(newSketch);
-        assertThat(saved.isModified(), isTrue());
+        assertThat(saved.isModified(), equalTo(true));
         assertThat(saved.size(), equalTo(original.size() + 1));
         List<Sketch> found = saved.search("p1");
         assertThat(found.size(), equalTo(1));
         Sketch fSketch = found.get(0);
         assertThat(fSketch.getName(), equalTo("p1"));
-        assertThat(fSketch.isSameSignature(newSketch), isTrue());
+        assertThat(fSketch.isSameSignature(newSketch), equalTo(true));
     }
 
     /**

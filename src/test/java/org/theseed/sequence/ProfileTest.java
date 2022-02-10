@@ -5,7 +5,6 @@ package org.theseed.sequence;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
-import static org.theseed.test.Matchers.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -47,7 +46,7 @@ public class ProfileTest  {
         List<BlastHit> results = gdb.psiBlast(pFile, parms, qMap);
         assertThat(results.size(), equalTo(1));
         Feature feat = g2.getFeature("fig|1685.390.peg.2038");
-        assertThat(feat.getLocation().contains(results.get(0).getSubjectLoc()), isTrue());
+        assertThat(feat.getLocation().contains(results.get(0).getSubjectLoc()), equalTo(true));
         gdb = ProteinBlastDB.create(new File(tempDir, "pblast2.fa"), g2);
         results = gdb.psiBlast(pFile, parms, qMap);
         assertThat(results.size(), equalTo(1));

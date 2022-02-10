@@ -26,7 +26,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
-import static org.theseed.test.Matchers.*;
 
 /**
  *
@@ -289,7 +288,7 @@ public class BlastTest  {
             List<BlastHit> list = entry.getValue();
             for (BlastHit result : list) {
                 assertThat(result.getQueryId(), equalTo(entry.getKey()));
-                assertThat(results0.contains(result), isTrue());
+                assertThat(results0.contains(result), equalTo(true));
             }
 
         }
