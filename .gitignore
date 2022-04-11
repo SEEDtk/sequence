@@ -1,3 +1,4 @@
 /target/
 *.ser
 /data/temp/
+/.DS_Store
