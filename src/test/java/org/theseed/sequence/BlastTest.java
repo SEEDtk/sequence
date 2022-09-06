@@ -21,7 +21,6 @@ import org.theseed.sequence.blast.ProteinBlastDB;
 import org.theseed.sequence.blast.BlastHit;
 import org.theseed.sequence.blast.BlastParms;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -38,8 +37,7 @@ public class BlastTest  {
 
     private static final File tempDir = new File("data", "temp");
 
-    @BeforeAll
-    protected static void setUp() throws Exception {
+    public BlastTest() throws Exception {
         // Set up our temp directory for blast files.
         if (! tempDir.isDirectory())
             FileUtils.forceMkdir(tempDir);
