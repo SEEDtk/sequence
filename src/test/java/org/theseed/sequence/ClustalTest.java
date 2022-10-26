@@ -15,7 +15,7 @@ public class ClustalTest  {
 
     @Test
     public void testClustal() throws IOException, InterruptedException {
-        ClustalPipeline tester = new ClustalPipeline(new File("data", "seedprot.fa"));
+        ClustalPipeline tester = new ClustalPipeline(new File("data", "seedProt.fa"));
         List<Sequence> output = tester.run();
         FastaInputStream testStream = new FastaInputStream(new File("data", "alignment.fa"));
         int i = 0;
