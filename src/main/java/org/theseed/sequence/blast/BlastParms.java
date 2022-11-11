@@ -25,6 +25,14 @@ public class BlastParms extends Parms implements Cloneable {
     private double minQueryBitScore;
     /** minimum acceptable query identity fraction */
     private double minQueryIdentity;
+    /** TRUE if we should turn off filtering for blastn (-dust no) */
+    private boolean dustOff;
+    /** mismatch penalty for blastn (-penalty XX) */
+    private int penalty;
+    /** match reward for blastn (-reward XX) */
+    private int reward;
+    /** minimum absolute length for a match */
+    private int minMatchLen;
 
     /**
      * Add an option parameter.  This calls through to the super-class, but returns an
@@ -87,6 +95,10 @@ public class BlastParms extends Parms implements Cloneable {
         this.pctIdentity = 0.0;
         this.minQueryBitScore = 0.0;
         this.minQueryIdentity = 0.0;
+        this.minMatchLen = 0;
+        this.penalty = 0;
+        this.dustOff = false;
+        this.reward = 0;
     }
 
     /**
@@ -105,6 +117,15 @@ public class BlastParms extends Parms implements Cloneable {
      */
     public BlastParms db_gencode(int gc) {
         return this.set("-db_gencode", gc);
+    }
+
+    /**
+     * Specify the x-dropoff value (in bits).
+     *
+     * @param drop	gap for X dropoff
+     */
+    public BlastParms xdrop_gap(double drop) {
+        return this.set("-xdrop_gap", drop);
     }
 
     /**
@@ -145,6 +166,47 @@ public class BlastParms extends Parms implements Cloneable {
     }
 
     /**
+     * Denote we want filtering off for blastn.
+     */
+    public BlastParms dustOff() {
+        this.dustOff = true;
+        return this;
+    }
+
+    /**
+     * Specify a blastn mismatch penalty.
+     *
+     * @param pen	penalty value (usually negative)
+     */
+    public BlastParms penalty(int pen) {
+        this.penalty = pen;
+        return this;
+    }
+
+    /**
+     * Specify a blastn match reward.
+     *
+     * @param rwd	reward value (usually positive)
+     */
+    public BlastParms reward(int rwd) {
+        this.reward = rwd;
+        return this;
+    }
+
+    /**
+     * Add special parameters for blastn.  This is always called on a clone of the client's original
+     * parms object.
+     */
+    public void customizeForBlastn() {
+        if (this.dustOff)
+            this.set("-dust", "no");
+        if (this.penalty != 0)
+            this.set("-penalty", Integer.toString(this.penalty));
+        if (this.reward != 0)
+            this.set("-reward", Integer.toString(this.reward));
+    }
+
+    /**
      * @return a copy of this object.
      */
     @Override
@@ -182,6 +244,21 @@ public class BlastParms extends Parms implements Cloneable {
     }
 
     /**
+     * @return the minimum match length
+     */
+    public int getMinLen() {
+        return this.minMatchLen;
+    }
+
+    /**
+     * @param minLen	the minimum match length to accept
+     */
+    public BlastParms minLen(int minLen) {
+        this.minMatchLen = minLen;
+        return this;
+    }
+
+    /**
      * @param pctLenOfSubject the pctLenOfSubject to set
      */
     public BlastParms pctLenOfSubject(double pctLenOfSubject) {
@@ -213,7 +290,8 @@ public class BlastParms extends Parms implements Cloneable {
                 && result.getSubjectPercentMatch() >= this.pctLenOfSubject
                 && result.getPercentIdentity() >= this.pctIdentity
                 && result.getQueryBitScore() >= this.minQueryBitScore
-                && result.getQueryIdentity() >= this.minQueryIdentity);
+                && result.getQueryIdentity() >= this.minQueryIdentity
+                && result.getAlignLen() >= this.minMatchLen);
         return retVal;
     }
 

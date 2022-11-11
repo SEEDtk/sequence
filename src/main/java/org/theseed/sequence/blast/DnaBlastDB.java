@@ -133,6 +133,7 @@ public class DnaBlastDB extends BlastDB {
     @Override
     public List<BlastHit> blast(DnaStream contigs, BlastParms parms) {
         BlastParms myParms = parms.clone();
+        myParms.customizeForBlastn();
         List<BlastHit> retVal = this.runBlast("blastn", contigs, myParms);
         return retVal;
     }

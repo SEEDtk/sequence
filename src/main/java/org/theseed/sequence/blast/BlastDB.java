@@ -165,9 +165,6 @@ public abstract class BlastDB {
      * @param parms		BLAST parameters
      *
      * @return a list of BLAST matches
-     *
-     * @throws InterruptedException
-     * @throws IOException
      */
     public abstract List<BlastHit> blast(ProteinStream proteins, BlastParms parms);
 
@@ -178,9 +175,6 @@ public abstract class BlastDB {
      * @param parms		BLAST parameters
      *
      * @return a list of BLAST matches
-     *
-     * @throws InterruptedException
-     * @throws IOException
      */
     public abstract List<BlastHit> blast(DnaStream contigs, BlastParms parms);
 
@@ -192,9 +186,6 @@ public abstract class BlastDB {
      * @param qMap		map of query sequence IDs to descriptions
      *
      * @return the list of blast hits found
-     *
-     * @throws IOException
-     * @throws InterruptedException
      */
     public abstract List<BlastHit> psiBlast(File pssmFile, BlastParms parms, Map<String, String> qMap);
 
@@ -238,8 +229,10 @@ public abstract class BlastDB {
     }
 
     /**
-     * @param blastProgram
-     * @param parms
+     * Format the two parts of the blast command.
+     *
+     * @param blastProgram	name of the blast program
+     * @param parms			parameter object to use
      */
     protected void saveCommand(String blastProgram, BlastParms parms) {
         this.blastType = blastProgram;

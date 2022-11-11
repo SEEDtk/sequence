@@ -474,6 +474,16 @@ public class BlastHit {
     }
 
     /**
+     * @return the fractional identity
+     */
+    public double getIdentity() {
+        double retVal = 0.0;
+        if (this.alignLen > 0)
+            retVal = ((double) this.numIdentical) / this.alignLen;
+        return retVal;
+    }
+
+    /**
      * @return the fraction query identity
      */
     public double getQueryIdentity() {

@@ -88,14 +88,21 @@ public class BlastTest  {
     public void testBlastParms() {
         BlastParms parms = new BlastParms().set("-a").set("-b", 100).db_gencode(11).maxE(1e-20)
                 .maxPerQuery(5).minPercent(50).num_threads(6).query_gencode(4).pctLenOfQuery(0.5)
-                .minQueryBitScore(0.75).minQueryIdentity(0.35);
+                .minQueryBitScore(0.75).minQueryIdentity(0.35).minLen(100);
         assertThat(parms.getPctLenOfQuery(), equalTo(0.5));
         assertThat(parms.getPctIdentity(), equalTo(50.0));
         assertThat(parms.getMinQueryBitScore(), equalTo(0.75));
         assertThat(parms.getMinQueryIdentity(), equalTo(0.35));
+        assertThat(parms.getMinLen(), equalTo(100));
         assertThat(parms.get(), contains("-a", "-b", "100", "-db_gencode", "11", "-evalue", "1.0E-20",
                 "-max_target_seqs", "5","-num_threads", "6", "-query_gencode", "4"));
-
+        // Test the blastn stuff.
+        parms.dustOff().penalty(-1);
+        assertThat(parms.get(), contains("-a", "-b", "100", "-db_gencode", "11", "-evalue", "1.0E-20",
+                "-max_target_seqs", "5","-num_threads", "6", "-query_gencode", "4"));
+        parms.customizeForBlastn();
+        assertThat(parms.get(), contains("-a", "-b", "100", "-db_gencode", "11", "-dust", "no", "-evalue", "1.0E-20",
+                "-max_target_seqs", "5","-num_threads", "6", "-penalty", "-1", "-query_gencode", "4"));
     }
 
     @Test
