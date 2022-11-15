@@ -111,6 +111,15 @@ public class BlastParms extends Parms implements Cloneable {
     }
 
     /**
+     * Specify a task (the default depends on the application).
+     *
+     * @param taskName	task name
+     */
+    public BlastParms task(String taskName) {
+        return this.set("-task", taskName);
+    }
+
+    /**
      * Specify the genetic code for the database (the default is 1).
      *
      * @param gc	genetic code to use to translate database sequences
@@ -126,6 +135,26 @@ public class BlastParms extends Parms implements Cloneable {
      */
     public BlastParms xdrop_gap(double drop) {
         return this.set("-xdrop_gap", drop);
+    }
+
+    /**
+     * Specify the cost to open a gap.
+     *
+     * @param cost	gap open cost
+     *
+     */
+    public BlastParms gapopen(int cost) {
+        return this.set("-gapopen", cost);
+    }
+
+    /**
+     * Specify the cost to extend a gap.
+     *
+     * @param cost	gap extension cost
+     *
+     */
+    public BlastParms gapextend(int cost) {
+        return this.set("-gapextend", cost);
     }
 
     /**
@@ -218,6 +247,10 @@ public class BlastParms extends Parms implements Cloneable {
         retVal.pctIdentity = this.pctIdentity;
         retVal.minQueryBitScore = this.minQueryBitScore;
         retVal.minQueryIdentity = this.minQueryIdentity;
+        retVal.dustOff = this.dustOff;
+        retVal.penalty = this.penalty;
+        retVal.reward = this.reward;
+        retVal.minMatchLen = this.minMatchLen;
         return retVal;
     }
 
@@ -306,7 +339,8 @@ public class BlastParms extends Parms implements Cloneable {
     public String toString() {
         return super.toString() + (pctLenOfQuery > 0.0 ? " --pctLenOfQuery=" + pctLenOfQuery : "") +
                 (pctLenOfSubject > 0.0 ? " --pctLenOfSubject=" + pctLenOfSubject : "") +
-                (pctIdentity > 0.0 ? " --pctIdentity=" + pctIdentity : "");
+                (pctIdentity > 0.0 ? " --pctIdentity=" + pctIdentity : "") +
+                (minMatchLen > 0 ? " --minMatchLen=" + minMatchLen : "");
     }
 
     /**

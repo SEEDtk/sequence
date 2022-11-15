@@ -590,5 +590,19 @@ public class BlastHit {
         return true;
     }
 
+    /**
+     * @return the number of matched base pairs in the query
+     */
+    public int getQueryMatchLen() {
+        return this.seqs[QUERY].getLoc().getLength();
+    }
+
+    /**
+     * @return the number of matched base pairs in the subject
+     */
+    public int getSubjectMatchLen() {
+        return this.seqs[SUBJECT].getLoc().getLength();
+    }
+
 
 }
