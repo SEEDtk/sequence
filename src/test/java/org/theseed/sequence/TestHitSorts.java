@@ -8,8 +8,8 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.theseed.counters.Shuffler;
 import org.theseed.io.LineReader;
-import org.theseed.io.Shuffler;
 import org.theseed.sequence.blast.BlastHit;
 
 import org.junit.jupiter.api.Test;
