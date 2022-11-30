@@ -7,8 +7,11 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
+import org.apache.commons.lang3.StringUtils;
 import org.theseed.genome.Genome;
+import org.theseed.io.LineReader;
 import org.theseed.sequence.DnaStream;
 import org.theseed.sequence.ProteinStream;
 
@@ -20,7 +23,9 @@ public class ProteinBlastDB extends BlastDB {
 
     // FIELDS
     /** array of file suffixes */
-    public static final String[] SUFFIXES = new String[] { ".pin", ".psq", ".phr" };
+    private static final String[] SUFFIXES = new String[] { ".pin", ".psq", ".phr", ".db.dmnd" };
+    /** set of programs supported by Diamond */
+    private static final Set<String> DIAMOND_TYPES = Set.of("blastp", "blastx");
 
     /**
      * Load an existing protein blast database.
@@ -46,7 +51,38 @@ public class ProteinBlastDB extends BlastDB {
         ProteinBlastDB retVal = new ProteinBlastDB();
         retVal.setFile(fastaFile);
         retVal.createDb();
+        if (DIAMOND_PATH != null)
+            retVal.createDiamondDb();
         return retVal;
+    }
+
+    /**
+     * Create the DIAMOND helper database for our FASTA file.
+     *
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    private void createDiamondDb() throws IOException, InterruptedException {
+        // Create the command.
+        String fileName = this.getFile().getAbsoluteFile().toString();
+        ProcessBuilder makeProcess = new ProcessBuilder(new File(DIAMOND_PATH, "diamond").getPath(),
+                "makedb", "--in", fileName, "--db", fileName + ".db");
+        // Merge STDERR into STDOUT, then start the process.
+        makeProcess.redirectErrorStream(true);
+        log.info("Running diamond database make for {}.", this.getFile());
+        Process process = makeProcess.start();
+        // Get a reader for the process output.
+        try (LineReader reader = new LineReader(process.getInputStream())) {
+            for (String line : reader)
+                log.debug("*   {}", line);
+            int exitCode = process.waitFor();
+            if (exitCode != 0) {
+                String commandString = StringUtils.join(makeProcess.command(), " ");
+                log.error("Failing diamond command with exit code {} was {}.", exitCode, commandString);
+                throw new RuntimeException("Exit code " + exitCode + " from Diamond DB creation.");
+            }
+            log.info("Diamond database created.");
+        }
     }
 
     /**
@@ -63,6 +99,11 @@ public class ProteinBlastDB extends BlastDB {
         File testFile = new File(fastaFile.getPath() + ".psq");
         if (! testFile.exists() || testFile.lastModified() < fastaFile.lastModified())
             retVal.createDb();
+        if (DIAMOND_PATH != null) {
+            testFile = new File(fastaFile.getPath() + ".db.dmnd");
+            if (! testFile.exists() || testFile.lastModified() < fastaFile.lastModified())
+                retVal.createDiamondDb();
+        }
         return retVal;
     }
 
@@ -127,6 +168,18 @@ public class ProteinBlastDB extends BlastDB {
     @Override
     protected String[] getSuffixes() {
         return SUFFIXES;
+    }
+
+    @Override
+    protected List<String> computeBlastCommand(String blastProgram, BlastParms myParms) {
+        List<String> retVal;
+        if (DIAMOND_PATH != null && DIAMOND_TYPES.contains(blastProgram)) {
+            // Diamond requires its name followed by the blast command.
+            String commandString = new File(DIAMOND_PATH, "diamond").toString();
+            retVal = myParms.getForDiamond(commandString, blastProgram);
+        } else
+            retVal = super.computeBlastCommand(blastProgram, myParms);
+        return retVal;
     }
 
 }

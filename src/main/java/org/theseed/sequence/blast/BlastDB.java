@@ -8,6 +8,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +52,8 @@ public abstract class BlastDB {
     protected static Logger log = LoggerFactory.getLogger(BlastDB.class);
     /** path to BLAST+ software */
     protected static String BLAST_PATH = System.getenv("BLAST_PATH");
+    /** path to DIAMOND software (optional) */
+    protected static String DIAMOND_PATH = System.getenv("DIAMOND_PATH");
     /** file name of the blast database */
     private File dbFile;
     /** type of last BLAST run */
@@ -74,10 +77,71 @@ public abstract class BlastDB {
             // Create the temporary buffer file.
             this.tempFile = File.createTempFile("temp", "fasta");
             this.tempFile.deleteOnExit();
+            // Insure we have the paths.
+            if (StringUtils.isBlank(BLAST_PATH) || StringUtils.isBlank(DIAMOND_PATH))
+                findPaths();
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
+    }
 
+    /**
+     * Specify an override for the default blast path.
+     *
+     * @param newPath	proposed new blast path
+     */
+    public static void setBlastPath(String newPath) {
+        BLAST_PATH = newPath;
+    }
+
+    /**
+     * Specify an override for the default diamond path.
+     *
+     * @param newPath	proposed new diamond path
+     */
+    public static void setDiamondPath(String newPath) {
+        DIAMOND_PATH = newPath;
+    }
+
+    /**
+     * Find BLAST and DIAMOND on the system path, if necessary.
+     */
+    public static void findPaths() {
+        // Get the path as an array of directory names.
+        File[] path = Arrays.stream(StringUtils.split(System.getenv("PATH"), System.getProperty("path.separator")))
+                .map(x -> new File(x)).toArray(File[]::new);
+        for (int i = 0; i < path.length; i++) {
+            if (StringUtils.isBlank(BLAST_PATH) && checkForProgram(path[i], "blastp"))
+                BLAST_PATH = path[i].getAbsolutePath();
+            if (StringUtils.isBlank(DIAMOND_PATH) && checkForProgram(path[i], "diamond"))
+                DIAMOND_PATH = path[i].getAbsolutePath();
+        }
+        log.info("Blast path is {}, diamond path is {}.", BLAST_PATH, DIAMOND_PATH);
+    }
+
+    /**
+     * @return TRUE if Diamond is being used for protein databases
+     */
+    public static boolean haveDiamond() {
+        return ! StringUtils.isBlank(DIAMOND_PATH);
+    }
+
+    /**
+     * Determine if the specified program is in the specified directory.
+     *
+     * @param dir		directory to check
+     * @param name		program name
+     *
+     * @return TRUE if the program is there, else FALSE
+     */
+    private static boolean checkForProgram(File dir, String name) {
+        File testFile = new File(dir, name);
+        boolean retVal = testFile.canExecute();
+        if (! retVal) {
+            testFile = new File(dir, name + ".exe");
+            retVal = testFile.canExecute();
+        }
+        return retVal;
     }
 
     /**
@@ -260,7 +324,7 @@ public abstract class BlastDB {
         // Set up the parameters and form the command.
         myParms.set("-outfmt", BlastHit.OUT_FORMAT);
         myParms.set("-db", this.dbFile.getAbsolutePath());
-        List<String> command = myParms.get(new File(BLAST_PATH, blastProgram).getPath());
+        List<String> command = computeBlastCommand(blastProgram, myParms);
         ProcessBuilder blastCommand = new ProcessBuilder(command);
         // Start the BLAST.
         try {
@@ -289,6 +353,19 @@ public abstract class BlastDB {
         }
 
         return retVal;
+    }
+
+    /**
+     * This method computes the BLAST command to use.  It can be overridden by the subclass
+     * to invoke specialized BLAST software.
+     *
+     * @param blastProgram	BLAST program name (blastp, blastx, etc.)
+     * @param myParms		parameter object
+     *
+     * @return a list of all the pieces to pass to the command process
+     */
+    protected List<String> computeBlastCommand(String blastProgram, BlastParms myParms) {
+        return myParms.get(new File(BLAST_PATH, blastProgram).getPath());
     }
 
     /**

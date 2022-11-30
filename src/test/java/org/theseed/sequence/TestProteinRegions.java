@@ -59,7 +59,7 @@ public class TestProteinRegions {
         feat = gto.getFeature("fig|1313.7090.peg.2070");
         ExtendedProteinRegion region2 = new ExtendedProteinRegion(feat, 308);
         double dist = region.getDistance(region2);
-        assertThat(dist, closeTo(0.1822, 0.0001));
+        assertThat(dist, closeTo(0.1040, 0.0001));
     }
 
     /**

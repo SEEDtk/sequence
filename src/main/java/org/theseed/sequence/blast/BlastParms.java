@@ -3,6 +3,12 @@
  */
 package org.theseed.sequence.blast;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.commons.lang3.StringUtils;
 import org.theseed.utils.Parms;
 
 /**
@@ -364,6 +370,37 @@ public class BlastParms extends Parms implements Cloneable {
      */
     public double getMinQueryIdentity() {
         return minQueryIdentity;
+    }
+
+    /**
+     * Format a command for a diamond invocation.  With diamond, the output format must be parsed into
+     * separate operands, the initial hyphens must be doubled, and underscores in parameter names must
+     * be converted to hyphens.  Finally, the database name has a ".db" suffix.  In addition, the program
+     * specification is in two parts.
+     *
+     * @param commandString		command string
+     * @param blastProgram		program name (blastp or blastx)
+     *
+     * @return a list of strings to pass to the process builder
+     */
+    public List<String> getForDiamond(String commandString, String blastProgram) {
+        List<String> retVal = new ArrayList<String>(this.size() + 20);
+        retVal.add(commandString);
+        retVal.add(blastProgram);
+        for (String option : this.unary)
+            retVal.add("-" + option);
+        for (Map.Entry<String, String> parm : this.binary.entrySet()) {
+            String key = parm.getKey();
+            retVal.add("-" + StringUtils.replace(key, "_", "-"));
+            if (key.contentEquals("-outfmt")) {
+                String[] parts = StringUtils.split(parm.getValue(), ' ');
+                Arrays.stream(parts).forEach(x -> retVal.add(x));
+            } else if (key.contentEquals("-db"))
+                retVal.add(parm.getValue() + ".db");
+            else
+                retVal.add(parm.getValue());
+        }
+        return retVal;
     }
 
 }
