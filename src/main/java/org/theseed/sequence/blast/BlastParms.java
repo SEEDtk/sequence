@@ -185,6 +185,15 @@ public class BlastParms extends Parms implements Cloneable {
     }
 
     /**
+     * Specify the maximum number of results to keep per query/subject pair.
+     *
+     * @param max		maximum number of results per query/subject pair
+     */
+    public BlastParms maxPerPair(int max) {
+        return this.set("-max_hsps", max);
+    }
+
+    /**
      * Specify the minimum percent identity.
      *
      * @param pct	minimum percent identity
