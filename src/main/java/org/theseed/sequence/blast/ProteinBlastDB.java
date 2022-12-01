@@ -23,7 +23,7 @@ public class ProteinBlastDB extends BlastDB {
 
     // FIELDS
     /** array of file suffixes */
-    private static final String[] SUFFIXES = new String[] { ".pin", ".psq", ".phr", ".db.dmnd" };
+    public static final String[] SUFFIXES = new String[] { ".pin", ".psq", ".phr", ".db.dmnd" };
     /** set of programs supported by Diamond */
     private static final Set<String> DIAMOND_TYPES = Set.of("blastp", "blastx");
 
