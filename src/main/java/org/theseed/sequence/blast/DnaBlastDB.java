@@ -34,9 +34,18 @@ public class DnaBlastDB extends BlastDB {
      */
     protected DnaBlastDB(File fastaFile) {
         this.setFile(fastaFile);
-        File marker = markerFile();
-        this.geneticCode = MarkerFile.readInt(marker);
+        getGC(this);
         log.info("Using DNA blast database {} with genetic code {}.", fastaFile, this.geneticCode);
+    }
+
+    /**
+     * Determine the genetic code for an existing DNA BLAST database.
+     *
+     * @param db			database of interest
+     */
+    private static void getGC(DnaBlastDB db) {
+        File marker = db.markerFile();
+        db.geneticCode = MarkerFile.readInt(marker);
     }
 
     /**
@@ -60,10 +69,20 @@ public class DnaBlastDB extends BlastDB {
     public static DnaBlastDB create(File fastaFile, int geneticCode) throws IOException, InterruptedException {
         DnaBlastDB retVal = new DnaBlastDB();
         retVal.setFile(fastaFile);
-        retVal.geneticCode = geneticCode;
-        MarkerFile.write(retVal.markerFile(), geneticCode);
+        setGC(geneticCode, retVal);
         retVal.createDb();
         return retVal;
+    }
+
+    /**
+     * Specify the genetic code for a DNA database.
+     *
+     * @param geneticCode	genetic code to store
+     * @param db			DNA database to store it in
+     */
+    private static void setGC(int geneticCode, DnaBlastDB db) {
+        db.geneticCode = geneticCode;
+        MarkerFile.write(db.markerFile(), geneticCode);
     }
 
     /**
@@ -79,8 +98,11 @@ public class DnaBlastDB extends BlastDB {
         DnaBlastDB retVal = new DnaBlastDB();
         retVal.setFile(fastaFile);
         File testFile = new File(fastaFile.getPath() + ".nsq");
-        if (! testFile.exists() || testFile.lastModified() < fastaFile.lastModified())
+        if (! testFile.exists() || testFile.lastModified() < fastaFile.lastModified()) {
+            setGC(geneticCode, retVal);
             retVal.createDb();
+        } else
+            getGC(retVal);
         return retVal;
     }
 

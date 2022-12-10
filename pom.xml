@@ -56,5 +56,10 @@
         <version>1.0.0</version>
     </dependency>
 
+    <dependency>
+    	<groupId>org.theseed</groupId>
+    	<artifactId>p3api</artifactId>
+    	<version>1.0.0</version>
+    </dependency>
  </dependencies>
 </project>
