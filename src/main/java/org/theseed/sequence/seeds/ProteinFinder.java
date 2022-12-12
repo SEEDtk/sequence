@@ -6,15 +6,20 @@ package org.theseed.sequence.seeds;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.commons.io.FileUtils;
@@ -24,12 +29,15 @@ import org.slf4j.LoggerFactory;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
 import org.theseed.genome.iterator.GenomeSource;
+import org.theseed.io.TabbedLineReader;
 import org.theseed.locations.Location;
 import org.theseed.p3api.Criterion;
 import org.theseed.p3api.P3Connection;
 import org.theseed.p3api.P3Connection.Table;
 import org.theseed.proteins.Role;
 import org.theseed.proteins.RoleMap;
+import org.theseed.sequence.DnaDataStream;
+import org.theseed.sequence.FastaInputStream;
 import org.theseed.sequence.FastaOutputStream;
 import org.theseed.sequence.ProteinInputStream;
 import org.theseed.sequence.ProteinStream;
@@ -69,24 +77,32 @@ public class ProteinFinder {
     private RoleMap roleMap;
     /** parameter object for protein blasts */
     private BlastParms protParms;
+    /** parameter object for DNA blasts */
+    private BlastParms dnaParms;
     /** minimum e-value for protein blast */
     private int maxGapProt;
     /** minimum fraction hit length for protein blast */
     private double minFracProt;
+    /** score sorter for DNA hits */
+    private DnaHit.ScoreSorter DNA_HIT_SCORE_SORTER = new DnaHit.ScoreSorter();
     /** name to give to the role file */
     private static final String ROLE_FILE_NAME = "roles.for.finder";
     /** name to give to the protein FASTA */
     private static final String PROTEIN_FILE_NAME = "seedprot.fa";
     /** batch size for sequence queries */
     private static final int BATCH_SIZE = 400;
-    /** minimum e-value for protein blast */
-    private static double MIN_E_VAL_PROT = 1e-20;
+    /** maximum e-value for protein blast */
+    private static double MAX_E_VAL_PROT = 1e-20;
     /** maximum gap size for protein blast */
     private static int MAX_GAP_PROT = 600;
     /** minimum fraction match length for protein blast (all pieces combined) */
     private static double MIN_FRAC_PROT = 0.5;
     /** genetic code for protein blast */
     private static int GC_PROT = 11;
+    /** maximum e-value for DNA blast */
+    private static final double MAX_E_VAL_DNA = 1e-10;
+    /** empty location list */
+    private static final List<Location> NO_LOCATIONS = Collections.emptyList();
 
     /**
      * Create a new protein-finder object.
@@ -148,7 +164,8 @@ public class ProteinFinder {
         this.maxGapProt = MAX_GAP_PROT;
         this.minFracProt = MIN_FRAC_PROT;
         // Set up the blast parameters.
-        this.protParms = new BlastParms().maxE(MIN_E_VAL_PROT);
+        this.protParms = new BlastParms().maxE(MAX_E_VAL_PROT);
+        this.dnaParms = new BlastParms().maxE(MAX_E_VAL_DNA).maxPerQuery(1);
     }
 
     /**
@@ -359,6 +376,58 @@ public class ProteinFinder {
     }
 
     /**
+     * Save a set of seed protein hits.
+     *
+     * @param seedProtMap	a map of role IDs to hit location lists
+     * @param saveFile		file in which to save the map
+     *
+     * @throws IOException
+     */
+    public static void saveSeedProteins(Map<String, List<Location>> seedProtMap, File saveFile) throws IOException {
+        // Open the output file.
+        try (PrintWriter writer = new PrintWriter(saveFile)) {
+            // Start with a header.  The locations will be space-delimited.
+            writer.println("role_id\tlocations");
+            // Loop through the map.  Note that the roles will come out in a randomized order because of the hashing.
+            for (var roleEntry : seedProtMap.entrySet()) {
+                // Form the location list.
+                String locList = roleEntry.getValue().stream().map(x -> x.toString()).collect(Collectors.joining(" "));
+                writer.println(roleEntry.getKey() + "\t" + locList);
+            }
+        }
+        log.info("{} seed protein hits saved to {}.", seedProtMap.size(), saveFile);
+    }
+
+    /**
+     * Load a set of seed protein hits.
+     *
+     * @param loadFile	file from which to load the map
+     *
+     * @return a map of role IDs to hit location lists
+     *
+     * @throws IOException
+     */
+    public static Map<String, List<Location>> loadSeedProteins(File loadFile) throws IOException {
+        // Open the input file.
+        Map<String, List<Location>> retVal = new HashMap<String, List<Location>>(20);
+        try (TabbedLineReader inStream = new TabbedLineReader(loadFile)) {
+            for (var line : inStream) {
+                // Get this role.
+                String roleId = line.get(0);
+                // Split out the location strings:  they are space-delimited.
+                String[] locationStrings = StringUtils.split(line.get(1), ' ');
+                // Convert them to locations and store them in the map.
+                List<Location> locs = new ArrayList<Location>(locationStrings.length);
+                for (String locationString : locationStrings)
+                    locs.add(Location.fromString(locationString));
+                retVal.put(roleId, locs);
+            }
+        }
+        log.info("{} seed-protein hits loaded from {}.", retVal.size(), loadFile);
+        return retVal;
+    }
+
+    /**
      * Create the DNA FASTA files for each of the seed proteins.  Files that already exist will be skipped.
      *
      * @param refMap	set of acceptable genomes to use
@@ -508,6 +577,8 @@ public class ProteinFinder {
      */
     public static class DnaHit implements Comparable<DnaHit> {
 
+        /** ID of the role that triggered the hit */
+        private String roleId;
         /** ID of the query contig */
         private String contigId;
         /** ID of the proposed closest genome */
@@ -522,26 +593,59 @@ public class ProteinFinder {
         private double hiScore;
         /** total match length */
         private int matchLen;
+        /** match pattern for splitting species ID and name */
+        private static final Pattern SPECIES_INFO = Pattern.compile("(\\d+)\\s+(.+)");
 
         /**
          * Construct a new DNA hit.  We save the score and the taxonomy information from the hit.
          *
-         * @param hit	BLAST hit from which to construct this object
+         * @param hit		BLAST hit from which to construct this object
+         * @param roleId	ID of the role being sought when the hit occurred
          */
-        protected DnaHit(BlastHit hit) {
-            // The contig ID is stored as the query comment.
-            this.contigId = hit.getQueryDef();
+        protected DnaHit(BlastHit hit, String roleId) {
+            this.roleId = roleId;
+            // The query comment is the location of the seed protein subsequence.  We pull out the contig ID from there.
+            Location loc = Location.fromString(hit.getQueryId());
+            this.contigId = loc.getContigId();
             // The tax ID and name are parsed from the subject comment.
-            String[] pieces = StringUtils.split(hit.getSubjectDef(), '\t');
-            this.taxId = Integer.valueOf(pieces[0]);
-            this.name = pieces[1];
-            // The reference genome ID is in the subject ID.
-            this.refId = Feature.genomeOf(hit.getSubjectId());
-            // The score is the bit score.
-            this.score = hit.getBitScore();
-            this.hiScore = this.score;
-            // Save the match length.
-            this.matchLen = hit.getAlignLen();
+            Matcher m = SPECIES_INFO.matcher(hit.getSubjectDef());
+            if (! m.matches())
+                throw new IllegalArgumentException("Invalid taxonomic specification in DNA blast result " + hit.getSubjectId() + ".");
+            else {
+                this.taxId = Integer.valueOf(m.group(1));
+                this.name = m.group(2);
+                // The reference genome ID is in the subject ID.
+                this.refId = Feature.genomeOf(hit.getSubjectId());
+                // The score is the bit score.
+                this.score = hit.getBitScore();
+                this.hiScore = this.score;
+                // Save the match length.
+                this.matchLen = hit.getAlignLen();
+            }
+        }
+
+        /**
+         * Construct a DNA hit from its member fields.
+         *
+         * @param contigId2		contig ID containing the region with the seed protein
+         * @param roleId2		role ID for the seed protein
+         * @param highScore		score of the best hit
+         * @param totalScore	combined score of all hits
+         * @param matchLen2		match length of the best hit
+         * @param speciesId		taxon ID of recommended species
+         * @param speciesName	name of recommended species
+         * @param refId2		ID of recommended reference genome
+         */
+        public DnaHit(String contigId2, String roleId2, double highScore, double totalScore,
+                int matchLen2, int speciesId, String speciesName, String refId2) {
+            this.contigId = contigId2;
+            this.roleId = roleId2;
+            this.hiScore = highScore;
+            this.score = totalScore;
+            this.matchLen = matchLen2;
+            this.taxId = speciesId;
+            this.name = speciesName;
+            this.refId = refId2;
         }
 
         /**
@@ -558,6 +662,7 @@ public class ProteinFinder {
                 // Here the new hit is better.
                 this.hiScore = other.hiScore;
                 this.refId = other.refId;
+                this.roleId = other.roleId;
             }
         }
 
@@ -567,18 +672,21 @@ public class ProteinFinder {
         public String getContigId() {
             return this.contigId;
         }
+
+        /**
+         * @return the taxonomic ID of the recommended species for this hit
+         */
+        public int getSpeciesId() {
+            return this.taxId;
+        }
+
         /**
          * @return the ID of the proposed reference genome
          */
         public String getRefId() {
             return this.refId;
         }
-        /**
-         * @return the species ID
-         */
-        public int getTaxId() {
-            return this.taxId;
-        }
+
         /**
          * @return the species name
          */
@@ -587,10 +695,31 @@ public class ProteinFinder {
         }
 
         /**
-         * @return the score
+         * @return the total score from all hits
          */
         public double getScore() {
             return this.score;
+        }
+
+        /**
+         * @return the match length for the best hit
+         */
+        public int getMatchLen() {
+            return this.matchLen;
+        }
+
+        /**
+         * @return the score of the individual best hit
+         */
+        public double getHighScore() {
+            return this.hiScore;
+        }
+
+        /**
+         * @return the ID of the role used for the best hit
+         */
+        public String getRoleId() {
+            return this.roleId;
         }
 
         @Override
@@ -633,31 +762,32 @@ public class ProteinFinder {
         }
 
         /**
-         * This is an alternate sorter that sorts the highest-scoring object to the front.
+         * @return TRUE if the other hit is exactly the same as this one (a stronger condition than equality)
+         *
+         * @param other		other DNA hit to compare
+         */
+        public boolean isClone(DnaHit other) {
+            boolean retVal = this.contigId.equals(other.contigId) && this.hiScore == other.hiScore && this.matchLen == other.matchLen
+                    && this.name.equals(other.name) && this.refId.equals(other.refId) && this.roleId.equals(other.roleId)
+                    && this.score == other.score && this.taxId == other.taxId;
+            return retVal;
+        }
+
+        /**
+         * This is an alternate sorter that sorts by score.
          */
         public static class ScoreSorter implements Comparator<DnaHit> {
 
             /**
-             * @return a negative number if o1 has a higher score, a positive number if o2 has a higher score
+             * @return a negative number if o1 has a lower score and a positive number if o1 has a higher score
              */
             @Override
             public int compare(DnaHit o1, DnaHit o2) {
-                int retVal = Double.compare(o2.score, o1.score);
+                int retVal = Double.compare(o1.score, o2.score);
                 if (retVal == 0) {
                     retVal = o2.matchLen - o1.matchLen;
                 }
                 return retVal;
-            }
-
-            /**
-             * @return the best hit
-             *
-             * @param o1	first hit to compare
-             * @param o2	second hit to compare
-             */
-            public DnaHit max(DnaHit o1, DnaHit o2) {
-                int cmp = this.compare(o1, o2);
-                return (cmp <= 0 ? o1 : o2);
             }
 
         }
@@ -667,28 +797,163 @@ public class ProteinFinder {
     /**
      * Use the DNA FASTA files to determine the closest genome to each hit in a protein hit role map.
      *
-     * @param hitMap	map of role IDs to hit locations from "findSeedProteins"
+     * @param rolesFound	map of role IDs to hit locations from "findSeedProteins"
+     * @param contigFile	FASTA file to which the hit locations refer
      *
      * @return a map from contig IDs to closest-genome IDs
      *
      * @throws InterruptedException
      * @throws IOException
      */
-    public Map<String, DnaHit> findRefGenomes(Map<String, Collection<Location>> protHitMap) throws IOException, InterruptedException {
+    public Map<String, DnaHit> findRefGenomes(Map<String, List<Location>> rolesFound, File contigFile)
+            throws IOException, InterruptedException {
+        // The first task is to read through the contig file and extract the sequences for each location.
+        Set<Location> locs = rolesFound.values().stream().flatMap(x -> x.stream()).collect(Collectors.toSet());
+        Map<Location, Sequence> locMap = this.getLocationSequences(locs, contigFile);
         // This is our working map.  For each contig, we remember the best hit against each species, and accumulate the scores
-        // of other hits into it.  At the end, each contig will have a set of votesIt collects all the hits for each contig.
-        var votingMap = new HashMap<String, Map<Integer, DnaHit>>(100);
-        for (var protHitsEntry : protHitMap.entrySet()) {
+        // of other hits into it.  At the end, each contig will have a set of votes we need to adjudicate.  We initialize
+        // the map with an empty sub-map for each contig.
+        var votingMap = locs.stream().collect(Collectors.toMap(x -> x.getContigId(), x -> new TreeMap<Integer, DnaHit>(), (x,y) -> x));
+        int voteCount = 0;
+        // Loop through the incoming protein hit map.
+        for (var protHitsEntry : rolesFound.entrySet()) {
             // Determine the role and the name of the BLAST database for it.
             String roleId = protHitsEntry.getKey();
-            var locs = protHitsEntry.getValue();
-            log.info("Processing {} hits for role {}.", locs.size(), roleId);
+            var locList = protHitsEntry.getValue();
+            log.info("Processing {} seed-protein hits for role {}.", locList.size(), roleId);
             File roleFileName = this.getDnaFastaFileName(roleId);
             DnaBlastDB db = DnaBlastDB.createOrLoad(roleFileName, GC_PROT);
-            // TODO blast for this role and convert hits to DnaHits, keeping merged best hit for each species
+            // Get all the sequences for this protein role.
+            Collection<Sequence> seqs = locList.stream().map(x -> locMap.get(x)).collect(Collectors.toList());
+            // Now perform the blast.  We keep only the best hit for each query sequence.  Note that this is a
+            // blastn, so the GC code does not matter.
+            DnaDataStream seqStream = new DnaDataStream(seqs, GC_PROT);
+            var hits = db.blast(seqStream, this.dnaParms);
+            // Now loop through the hits, and add them to the voting map.
+            for (BlastHit hit : hits) {
+                DnaHit dnaHit = new DnaHit(hit, roleId);
+                // We need to store this hit in the voting map, which is essentially a two-dimensional mapping
+                // keyed on contig ID followed by recommended species.
+                Map<Integer, DnaHit> speciesMapForContig = votingMap.get(dnaHit.getContigId());
+                DnaHit hitForSpecies = speciesMapForContig.get(dnaHit.getSpeciesId());
+                if (hitForSpecies == null) {
+                    // This is the first hit against this species, so store it directly.
+                    speciesMapForContig.put(dnaHit.getSpeciesId(), dnaHit);
+                    voteCount++;
+                } else {
+                    // This is not the first hit, so merge it into the old hit.
+                    hitForSpecies.merge(dnaHit);
+                }
+            }
         }
-        // TODO collate votes to find the refID for each contig
-        return null;
+        log.info("{} species recommendations found for {} contigs.", voteCount, votingMap.size());
+        // This will be our return map.
+        var retVal = new HashMap<String, DnaHit>(votingMap.size() * 4 / 3);
+        // Now we have a set of species recommendations for each contig.  Pick the best for each.
+        for (var contigInfo : votingMap.entrySet()) {
+            String contigId = contigInfo.getKey();
+            // Get the best species recommendation for this contig.
+            DnaHit max = contigInfo.getValue().values().stream().max(DNA_HIT_SCORE_SORTER).orElse(null);
+            if (max == null) {
+                // Here the contig is an outlier with no recommendations.
+                log.warn("No species recommendation found for contig {}.", contigId);
+            } else {
+                // Store the species recommentation with the highest vote.
+                log.info("Contig {} has been assigned species {} ({}) using {}.", contigId, max.getSpeciesId(), max.getName(),
+                        max.getRoleId());
+                retVal.put(contigId, max);
+            }
+        }
+        return retVal;
+    }
+
+    /**
+     * Extract the sequences at the specified locations from the specified FASTA file.
+     *
+     * @param locs			set of locations to extract
+     * @param contigFile	FASTA file containing the contigs referenced in the locations
+     *
+     * @return a map from each location to its DNA sequence
+     *
+     * @throws IOException
+     */
+    private Map<Location, Sequence> getLocationSequences(Set<Location> locs, File contigFile) throws IOException {
+        // Map each contig to the locations in it.
+        Map<String, Collection<Location>> contigMap = new HashMap<String, Collection<Location>>(locs.size() * 4 / 3 + 1);
+        for (Location loc : locs) {
+            String contigId = loc.getContigId();
+            Collection<Location> locList = contigMap.computeIfAbsent(contigId, x -> new ArrayList<Location>());
+            locList.add(loc);
+        }
+        // This will be the return map.
+        var retVal = new HashMap<Location, Sequence>(locs.size() * 4 / 3 + 1);
+        // Open the FASTA file and loop through it, collecting sequences.
+        try (FastaInputStream contigStream = new FastaInputStream(contigFile)) {
+            log.info("Reading {} to extract {} seed-protein sequences.", contigFile, locs.size());
+            for (var contig : contigStream) {
+                // Get the locations in this contig (there are usually none, as the seeds are sparse).
+                Collection<Location> locList = contigMap.getOrDefault(contig.getLabel(), NO_LOCATIONS);
+                for (Location loc : locList) {
+                    // Form a sequence out of the DNA at this location.
+                    String dna = contig.getDna(loc);
+                    Sequence seq = new Sequence(loc.toString(), contig.getLabel(), dna);
+                    retVal.put(loc, seq);
+                }
+            }
+        }
+        return retVal;
+    }
+
+    /**
+     * Save the reference-genome recommendation map in the specified file.
+     *
+     * @param refMap	map of contig IDs to DNA hits
+     * @param saveFile	file in which to save the recommendations
+     *
+     * @throws IOException
+     */
+    public static void saveRefGenomes(Map<String, DnaHit> refMap, File saveFile) throws IOException {
+        // Open the output file.
+        try (PrintWriter writer = new PrintWriter(saveFile)) {
+            writer.println("contig_id\trole_id\thigh_score\ttotal_score\tmatch_len\tspecies_id\tspecies_name\tref_genome_id");
+            // Loop through the DNA hits.  The contig ID is in the hit object, so we don't need the key.
+            for (DnaHit hit : refMap.values())
+                writer.println(hit.getContigId() + "\t" + hit.getRoleId() + "\t" + Double.toString(hit.getHighScore())
+                        + "\t" + Double.toString(hit.getScore()) + "\t" + Integer.toString(hit.getMatchLen()) + "\t"
+                        + Integer.toString(hit.getSpeciesId()) + "\t" + hit.getName() + "\t" + hit.getRefId());
+        }
+        log.info("Reference-genome recommendations for {} contigs saved to {}.", refMap.size(), saveFile);
+    }
+
+    /**
+     * Load a reference-genome recommendation map from the specified file.
+     *
+     * @param loadFile	file from which to load the map
+     *
+     * @return a map from contig IDs to reference-genome recommendations
+     *
+     * @throws IOException
+     */
+    public static Map<String, DnaHit> loadRefGenomes(File loadFile) throws IOException {
+        // This will be the return map.
+        Map<String, DnaHit> retVal = new HashMap<String, DnaHit>(100);
+        try (TabbedLineReader loadStream = new TabbedLineReader(loadFile)) {
+            // Loop through the input.  Each one is a map entry.
+            for (var line : loadStream) {
+                String contigId = line.get(0);
+                String roleId = line.get(1);
+                double highScore = line.getDouble(2);
+                double totalScore = line.getDouble(3);
+                int matchLen = line.getInt(4);
+                int speciesId = line.getInt(5);
+                String speciesName = line.get(6);
+                String refId = line.get(7);
+                DnaHit hit = new DnaHit(contigId, roleId, highScore, totalScore, matchLen, speciesId, speciesName, refId);
+                retVal.put(contigId, hit);
+            }
+        }
+        log.info("Reference-genome recommendations for {} contigs loaded from {}.", retVal.size(), loadFile);
+        return retVal;
     }
 
 }

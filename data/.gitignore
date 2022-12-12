@@ -1,2 +1,6 @@
 /.DS_Store
 /g1.faa.db.dmnd
+*.fasta.nhr
+*.fasta.nin
+*.fasta.nsq
+*.fasta.gc
