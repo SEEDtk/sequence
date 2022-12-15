@@ -30,7 +30,7 @@ class TestProteinFinder {
         File testDir = new File("data", "Finder");
         var finder = new ProteinFinder(testDir);
         File dnaFile1 = new File("data", "BigSample.fasta");
-        var rolesFound = finder.findSeedProteins(dnaFile1);
+        var rolesFound = finder.findSourProteins(dnaFile1);
         assertThat(rolesFound.size(), greaterThan(0));
         var locList = rolesFound.get("PhenTrnaSyntAlph");
         assertThat(locList.size(), equalTo(2));
@@ -38,7 +38,7 @@ class TestProteinFinder {
         assertThat(nodes, containsInAnyOrder("NODE_12_length_174929_cov_82.7452_ID_1122656",
                 "NODE_36_length_51523_cov_936.232_ID_1122704"));
         File dnaFile2 = new File("data", "Magnetoc.fasta");
-        rolesFound = finder.findSeedProteins(dnaFile2);
+        rolesFound = finder.findSourProteins(dnaFile2);
         assertThat(rolesFound.size(), greaterThan(0));
         for (var roleEntry : rolesFound.entrySet()) {
             locList = roleEntry.getValue();

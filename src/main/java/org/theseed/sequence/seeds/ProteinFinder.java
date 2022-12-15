@@ -49,12 +49,12 @@ import org.theseed.sequence.blast.DnaBlastDB;
 import com.github.cliftonlabs.json_simple.JsonObject;
 
 /**
- * This is a utility object that allows the use of BLAST to find seed proteins.  It provides methods to
+ * This is a utility object that allows the use of BLAST to find SOUR proteins.  It provides methods to
  * create a protein database for a small set of proteins and methods to find the proteins in a set
  * of contig sequences.
  *
  * The object allows the maintenance of two databases:  a protein query FASTA file that can be used to
- * scan contig sequences for likely seed protein locations, and a gigantic DNA FASTA file that can be
+ * scan contig sequences for likely SOUR protein locations, and a gigantic DNA FASTA file that can be
  * used to find the closest genome for each seed.
  *
  * In the protein query file, the sequence label is the FIG ID of the protein, and the comment is the
@@ -131,8 +131,7 @@ public class ProteinFinder {
     /**
      * Create a new protein-finder object from a populated directory.
      *
-     * @param finderDir		directory containing the finder files
-     * @param roleFile		role definition file to use
+     * @param dir		directory containing the finder files
      *
      * @throws IOException
      */
@@ -321,7 +320,22 @@ public class ProteinFinder {
     }
 
     /**
-     * Find the seed proteins in a FASTA file.  This method performs a protein-query BLAST against a DNA
+     * @return a map from each role ID to its finder FASTA file
+     */
+    public Map<String, File> getFastas() {
+        // The number of roles is small, and we want them in order, so we use a TreeMap.
+        Map<String, File> retVal = new TreeMap<String, File>();
+        // Loop through the roles.
+        for (Role role : this.roleMap) {
+            String roleId = role.getId();
+            File roleFile = this.getDnaFastaFileName(roleId);
+            retVal.put(roleId, roleFile);
+        }
+        return retVal;
+    }
+
+    /**
+     * Find the SOUR proteins in a FASTA file.  This method performs a protein-query BLAST against a DNA
      * database built from the file.  Adjacent hits may be combined if they are close enough together.
      *
      * @param	dnaFile		file of DNA sequences to search
@@ -331,7 +345,7 @@ public class ProteinFinder {
      * @throws InterruptedException
      * @throws IOException
      */
-    public Map<String, List<Location>> findSeedProteins(File dnaFile) throws IOException, InterruptedException {
+    public Map<String, List<Location>> findSourProteins(File dnaFile) throws IOException, InterruptedException {
         var retVal = new HashMap<String, List<Location>>(this.roleMap.size() * 2);
         // Perform the BLAST to find the protein hits.
         DnaBlastDB db = DnaBlastDB.createOrLoad(dnaFile, GC_PROT);
@@ -340,7 +354,7 @@ public class ProteinFinder {
         var hits = db.blast(prots, this.protParms);
         // Only proceed if there is at least one hit.
         if (hits.size() <= 0)
-            log.warn("No seed proteins found in {}.", dnaFile);
+            log.warn("No SOUR proteins found in {}.", dnaFile);
         else {
             log.info("{} hits returned from protein blast against {}.", hits.size(), dnaFile);
             // Sort the hits into a single sorted set as protein hits.
@@ -370,13 +384,13 @@ public class ProteinFinder {
                     stored++;
                 }
             }
-            log.info("{} hits for {} roles stored in seed-protein hit map.", stored, retVal.size());
+            log.info("{} hits for {} roles stored in SOUR protein hit map.", stored, retVal.size());
         }
         return retVal;
     }
 
     /**
-     * Save a set of seed protein hits.
+     * Save a set of SOUR protein hits.
      *
      * @param seedProtMap	a map of role IDs to hit location lists
      * @param saveFile		file in which to save the map
@@ -395,11 +409,11 @@ public class ProteinFinder {
                 writer.println(roleEntry.getKey() + "\t" + locList);
             }
         }
-        log.info("{} seed protein hits saved to {}.", seedProtMap.size(), saveFile);
+        log.info("{} SOUR protein hits saved to {}.", seedProtMap.size(), saveFile);
     }
 
     /**
-     * Load a set of seed protein hits.
+     * Load a set of SOUR protein hits.
      *
      * @param loadFile	file from which to load the map
      *
@@ -423,12 +437,12 @@ public class ProteinFinder {
                 retVal.put(roleId, locs);
             }
         }
-        log.info("{} seed-protein hits loaded from {}.", retVal.size(), loadFile);
+        log.info("{} SOUR protein hits loaded from {}.", retVal.size(), loadFile);
         return retVal;
     }
 
     /**
-     * Create the DNA FASTA files for each of the seed proteins.  Files that already exist will be skipped.
+     * Create the DNA FASTA files for each of the SOUR proteins.  Files that already exist will be skipped.
      *
      * @param refMap	set of acceptable genomes to use
      *
@@ -604,7 +618,7 @@ public class ProteinFinder {
          */
         protected DnaHit(BlastHit hit, String roleId) {
             this.roleId = roleId;
-            // The query comment is the location of the seed protein subsequence.  We pull out the contig ID from there.
+            // The query comment is the location of the SOUR protein subsequence.  We pull out the contig ID from there.
             Location loc = Location.fromString(hit.getQueryId());
             this.contigId = loc.getContigId();
             // The tax ID and name are parsed from the subject comment.
@@ -627,8 +641,8 @@ public class ProteinFinder {
         /**
          * Construct a DNA hit from its member fields.
          *
-         * @param contigId2		contig ID containing the region with the seed protein
-         * @param roleId2		role ID for the seed protein
+         * @param contigId2		contig ID containing the region with the SOUR protein
+         * @param roleId2		role ID for the SOUR protein
          * @param highScore		score of the best hit
          * @param totalScore	combined score of all hits
          * @param matchLen2		match length of the best hit
@@ -820,7 +834,7 @@ public class ProteinFinder {
             // Determine the role and the name of the BLAST database for it.
             String roleId = protHitsEntry.getKey();
             var locList = protHitsEntry.getValue();
-            log.info("Processing {} seed-protein hits for role {}.", locList.size(), roleId);
+            log.info("Processing {} SOUR protein hits for role {}.", locList.size(), roleId);
             File roleFileName = this.getDnaFastaFileName(roleId);
             DnaBlastDB db = DnaBlastDB.createOrLoad(roleFileName, GC_PROT);
             // Get all the sequences for this protein role.
@@ -889,7 +903,7 @@ public class ProteinFinder {
         var retVal = new HashMap<Location, Sequence>(locs.size() * 4 / 3 + 1);
         // Open the FASTA file and loop through it, collecting sequences.
         try (FastaInputStream contigStream = new FastaInputStream(contigFile)) {
-            log.info("Reading {} to extract {} seed-protein sequences.", contigFile, locs.size());
+            log.info("Reading {} to extract {} SOUR protein sequences.", contigFile, locs.size());
             for (var contig : contigStream) {
                 // Get the locations in this contig (there are usually none, as the seeds are sparse).
                 Collection<Location> locList = contigMap.getOrDefault(contig.getLabel(), NO_LOCATIONS);
