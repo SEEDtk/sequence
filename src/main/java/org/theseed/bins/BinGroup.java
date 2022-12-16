@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.Reader;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.counters.CountMap;
@@ -59,7 +61,12 @@ public class BinGroup implements Iterable<Bin> {
     public static final String UNPLACED_FASTA_NAME = "unbinned.fasta";
     /** format string for bin output FASTA file name */
     public static final String BIN_OUTPUT_FASTA = "bin.%d.%d.fasta";
+    /** sorter for statistics */
+    private static final Comparator<CountMap<String>.Count> COUNT_SORTER = new CountSorter();
 
+    /**
+     * This enumeration contains the java keys for the bin group.
+     */
     private static enum GroupKeys implements JsonKey {
         COUNTS(noCounts),
         IN_FILE(null),
@@ -80,6 +87,31 @@ public class BinGroup implements Iterable<Bin> {
         @Override
         public Object getValue() {
             return this.mValue;
+        }
+
+    }
+
+    /**
+     * This comparator allows us to sort the counts by grouping.
+     */
+    public static class CountSorter implements Comparator<CountMap<String>.Count> {
+
+        @Override
+        public int compare(CountMap<String>.Count o1, CountMap<String>.Count o2) {
+            String[] key1 = StringUtils.split(o1.getKey(), '-');
+            String[] key2 = StringUtils.split(o2.getKey(), '-');
+            int retVal = 0;
+            int i = 0;
+            while (i < key1.length && retVal == 0) {
+                if (i >= key2.length)
+                    retVal = -1;
+                else
+                    retVal = key1[i].compareTo(key2[i]);
+                i++;
+            }
+            if (retVal == 0 && i < key2.length)
+                retVal = 1;
+            return retVal;
         }
 
     }
@@ -400,5 +432,10 @@ public class BinGroup implements Iterable<Bin> {
         return this.binList.iterator();
     }
 
-
+    /**
+     * @return all the statistics in alphabetical order
+     */
+    public List<CountMap<String>.Count> getCounts() {
+        return this.stats.counts().stream().sorted(COUNT_SORTER).collect(Collectors.toList());
+    }
 }
