@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.NavigableSet;
 import java.util.Set;
@@ -41,6 +42,8 @@ public class Bin implements Comparable<Bin> {
     protected static Logger log = LoggerFactory.getLogger(Bin.class);
     /** name of the bin, usually derived from the recommended taxon */
     private String name;
+    /** permanent ID of the bin */
+    private String origID;
     /** taxon ID of the bin */
     private int taxonID;
     /** domain of the bin (Bacteria, Archaea) */
@@ -67,6 +70,8 @@ public class Bin implements Comparable<Bin> {
     private static final String DEFAULT_DOMAIN = "Bacteria";
     /** default genetic code */
     private static final int DEFAULT_GC = 11;
+    /** quality sorter object */
+    public static final Comparator<Bin> QUALITY_SORTER = new QualitySorter();
 
     /**
      * This enum indicates what should be done with a contig bin during import.
@@ -93,6 +98,7 @@ public class Bin implements Comparable<Bin> {
      */
     protected static enum BinKeys implements JsonKey {
         NAME("unknown species bin"),
+        ID(""),
         GC(DEFAULT_GC),
         DOMAIN(DEFAULT_DOMAIN),
         TAXON_ID(DEFAULT_TAX_ID),
@@ -228,6 +234,19 @@ public class Bin implements Comparable<Bin> {
     }
 
     /**
+     * This class is used to sort bins by a rough quality measure-- total coverage.
+     */
+    public static class QualitySorter implements Comparator<Bin> {
+
+        @Override
+        public int compare(Bin o1, Bin o2) {
+            int retVal = Double.compare(o2.getQuality(), o1.getQuality());
+            return retVal;
+        }
+
+    }
+
+    /**
      * Create a bin from a single contig.
      *
      * @param contigId		ID of the contig
@@ -237,8 +256,9 @@ public class Bin implements Comparable<Bin> {
     public Bin(String contigId, int len, double covg) {
         this.contigs = new TreeSet<Member>();
         this.contigs.add(new Member(contigId, len, covg));
-        // The initial name is the contig ID.
+        // The initial name is the contig ID.  This is also the original ID.
         this.name = contigId;
+        this.origID = contigId;
         // Default the other stuff.
         this.taxonID = DEFAULT_TAX_ID;
         this.gc = DEFAULT_GC;
@@ -259,6 +279,7 @@ public class Bin implements Comparable<Bin> {
         this.gc = json.getIntegerOrDefault(BinKeys.GC);
         this.name = json.getStringOrDefault(BinKeys.NAME);
         this.domain = json.getStringOrDefault(BinKeys.DOMAIN);
+        this.origID = json.getStringOrDefault(BinKeys.ID);
         // Get the file name (if any).
         String fileString = json.getStringOrDefault(BinKeys.FILE_NAME);
         if (fileString == null)
@@ -282,6 +303,7 @@ public class Bin implements Comparable<Bin> {
         retVal.put(BinKeys.GC.getKey(), this.gc);
         retVal.put(BinKeys.NAME.getKey(), this.name);
         retVal.put(BinKeys.TAXON_ID.getKey(), this.taxonID);
+        retVal.put(BinKeys.ID.getKey(), this.origID);
         if (this.outFile != null)
             retVal.put(BinKeys.FILE_NAME.getKey(), this.outFile.getAbsolutePath());
         // Form the reference genomes into a JSON array.
@@ -394,6 +416,14 @@ public class Bin implements Comparable<Bin> {
         }
         if (retVal > 0.0)
             retVal /= totLen;
+        return retVal;
+    }
+
+    /**
+     * @return the quality score of this bin, which is length * coverage, an incredibly large number
+     */
+    public double getQuality() {
+        double retVal = this.contigs.stream().mapToDouble(x -> x.getLen() * x.getCoverage()).sum();
         return retVal;
     }
 
@@ -521,11 +551,7 @@ public class Bin implements Comparable<Bin> {
 
     @Override
     public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + ((this.name == null) ? 0 : this.name.hashCode());
-        result = prime * result + this.taxonID;
-        return result;
+        return this.origID.hashCode();
     }
 
     @Override
@@ -537,14 +563,11 @@ public class Bin implements Comparable<Bin> {
             return false;
         }
         Bin other = (Bin) obj;
-        if (this.name == null) {
-            if (other.name != null) {
+        if (this.origID == null) {
+            if (other.origID != null) {
                 return false;
             }
-        } else if (!this.name.equals(other.name)) {
-            return false;
-        }
-        if (this.taxonID != other.taxonID) {
+        } else if (!this.origID.equals(other.origID)) {
             return false;
         }
         return true;
@@ -552,11 +575,7 @@ public class Bin implements Comparable<Bin> {
 
     @Override
     public int compareTo(Bin o) {
-        int retVal = this.taxonID - o.taxonID;
-        if (retVal == 0) {
-            retVal = this.name.compareTo(o.name);
-        }
-        return retVal;
+        return this.origID.compareTo(o.origID);
     }
 
     /**
@@ -567,6 +586,13 @@ public class Bin implements Comparable<Bin> {
     public void setVirtual(File binFile) {
         this.name = "Residual Contigs";
         this.outFile = binFile;
+    }
+
+    /**
+     * @return the permanent ID of this bin
+     */
+    public String getID() {
+        return this.origID;
     }
 
 }

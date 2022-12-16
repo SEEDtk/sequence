@@ -9,8 +9,9 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.Reader;
-import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -45,7 +46,7 @@ public class BinGroup implements Iterable<Bin> {
     /** map of contig IDs to bins */
     private Map<String, Bin> contigMap;
     /** set of bins */
-    private List<Bin> binList;
+    private Collection<Bin> binList;
     /** statistics about the bin group */
     private CountMap<String> stats;
     /** contig file name */
@@ -97,7 +98,7 @@ public class BinGroup implements Iterable<Bin> {
      */
     protected void setup(int hashSize) {
         this.contigMap = new HashMap<String, Bin>(hashSize * 4 / 3 + 1);
-        this.binList = new ArrayList<Bin>(hashSize);
+        this.binList = new HashSet<Bin>(hashSize);
         this.stats = new CountMap<String>();
         this.inputFile = null;
     }
@@ -229,7 +230,7 @@ public class BinGroup implements Iterable<Bin> {
      * @return the set of significant bins in this group, in order by species ID
      */
     public List<Bin> getSignificantBins() {
-        List<Bin> retVal = this.binList.stream().filter(x -> x.isSignificant()).sorted().collect(Collectors.toList());
+        List<Bin> retVal = this.binList.stream().filter(x -> x.isSignificant()).sorted(Bin.QUALITY_SORTER).collect(Collectors.toList());
         return retVal;
     }
 

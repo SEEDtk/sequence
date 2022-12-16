@@ -37,6 +37,10 @@ public class BinParms {
     private int dangLen;
     /** hit-differential for contig assignment */
     private int binStrength;
+    /** maximum number of reference genomes to use per bin */
+    private int maxRefs;
+    /** minimum number of SOUR hits required for a bin to be acceptable */
+    private int minHits;
 
     /**
      * Generate a binning parameter set with default parameters.
@@ -55,6 +59,8 @@ public class BinParms {
         this.setKDna(15);
         this.setDangLen(50);
         this.setBinStrength(10);
+        this.setMaxRefs(10);
+        this.setMinHits(3);
     }
 
     /**
@@ -309,9 +315,47 @@ public class BinParms {
     public String toString() {
         return String.format(
                 "--lenFilter=%s --binLenFilter=%s --covgFilter=%s --binCovgFilter=%s, --xLimit=%s  --maxEValue=%s" +
-                " --refMaxEValue=%s --minLen=%s --maxGap=%s --kProt=%s --kDna=%s --dangLen=%s --binStrength=%s",
+                " --refMaxEValue=%s --minLen=%s --maxGap=%s --kProt=%s --kDna=%s --dangLen=%s --binStrength=%s" +
+                " --maxRefs=%s --minHits=%s",
                 this.lenFilter, this.binLenFilter, this.covgFilter, this.binCovgFilter, this.xLimit, this.maxEValue,
-                this.refMaxEValue, this.minLen, this.maxGap, this.kProt, this.kDna, this.dangLen, this.binStrength);
+                this.refMaxEValue, this.minLen, this.maxGap, this.kProt, this.kDna, this.dangLen, this.binStrength,
+                this.maxRefs, this.minHits);
+    }
+
+    /**
+     * @return the maximum number of reference genomes to use
+     */
+    public int getMaxRefs() {
+        return this.maxRefs;
+    }
+
+    /**
+     * Specify the maximum number of reference genomes to use per bin
+     *
+     * @param maxRefs the maxRefs to set
+     *
+     * @return this object, for fluent invocation
+     */
+    public void setMaxRefs(int maxRefs) {
+        this.maxRefs = maxRefs;
+    }
+
+    /**
+     * @return the minimum number of SOUR hits required to generate an acceptable bin
+     */
+    public int getMinHits() {
+        return this.minHits;
+    }
+
+    /**
+     * Specify the minimum number of SOUR hits required to generate an acceptable bin
+     *
+     * @param minHits the minHits to set
+     *
+     * @return this object, for fluent invocation
+     */
+    public void setMinHits(int minHits) {
+        this.minHits = minHits;
     }
 
 }
