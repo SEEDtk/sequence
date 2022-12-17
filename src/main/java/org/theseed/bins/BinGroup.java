@@ -259,7 +259,7 @@ public class BinGroup implements Iterable<Bin> {
      * A bin becomes significant when it has been assigned a name and a taxon ID.  This method
      * gets the list of significant bins.
      *
-     * @return the set of significant bins in this group, in order by species ID
+     * @return the set of significant bins in this group, in quality order
      */
     public List<Bin> getSignificantBins() {
         List<Bin> retVal = this.binList.stream().filter(x -> x.isSignificant()).sorted(Bin.QUALITY_SORTER).collect(Collectors.toList());
