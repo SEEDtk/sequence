@@ -37,6 +37,7 @@ import org.theseed.p3api.P3Connection.Table;
 import org.theseed.proteins.Role;
 import org.theseed.proteins.RoleMap;
 import org.theseed.sequence.DnaDataStream;
+import org.theseed.sequence.DnaKmers;
 import org.theseed.sequence.FastaInputStream;
 import org.theseed.sequence.FastaOutputStream;
 import org.theseed.sequence.ProteinInputStream;
@@ -86,9 +87,9 @@ public class ProteinFinder {
     /** score sorter for DNA hits */
     private DnaHit.ScoreSorter DNA_HIT_SCORE_SORTER = new DnaHit.ScoreSorter();
     /** name to give to the role file */
-    private static final String ROLE_FILE_NAME = "roles.for.finder";
+    public static final String ROLE_FILE_NAME = "roles.for.finder";
     /** name to give to the protein FASTA */
-    private static final String PROTEIN_FILE_NAME = "seedprot.fa";
+    public static final String PROTEIN_FILE_NAME = "seedprot.fa";
     /** batch size for sequence queries */
     private static final int BATCH_SIZE = 400;
     /** maximum e-value for protein blast */
@@ -118,14 +119,15 @@ public class ProteinFinder {
             log.info("Creating protein-finder directory {}.", dir);
             FileUtils.forceMkdir(dir);
         }
-        File realRoleFile = new File(dir, ROLE_FILE_NAME);
+        this.finderDir = dir;
+        File realRoleFile = this.getRoleFile();
         if (! realRoleFile.equals(roleFile)) {
             // Here we must copy the role file into the finder directory.
             log.info("Copying role file {} to {}.", roleFile, realRoleFile);
             FileUtils.copyFile(roleFile, realRoleFile);
         }
         // Initialize the finder.
-        this.setup(dir);
+        this.setup();
     }
 
     /**
@@ -139,24 +141,22 @@ public class ProteinFinder {
         // Validate the directory.
         if (! dir.isDirectory())
             throw new FileNotFoundException("Finder directory " + dir + " is not found or invalid.");
-        File roleFile = new File(dir, ROLE_FILE_NAME);
+        this.finderDir = dir;
+        File roleFile = this.getRoleFile();
         if (! roleFile.exists())
             throw new FileNotFoundException("No role file found in finder directory " + dir + ".");
         // Initialize the finder.
-        this.setup(dir);
+        this.setup();
     }
 
     /**
      * Set up this finder.  We basically load the role map and initialize the blast parms.
      *
-     * @param dir		directory containing the finder files
-     *
      * @throws IOException
      */
-    private void setup(File dir) throws IOException {
-        this.finderDir = dir;
+    private void setup() throws IOException {
         // Load the role map.
-        File roleFile = new File(dir, ROLE_FILE_NAME);
+        File roleFile = this.getRoleFile();
         this.roleMap = RoleMap.load(roleFile);
         log.info("{} roles loaded from {}.", this.roleMap.size(), roleFile);
         // Set the tuning parameters from the defaults.
@@ -165,6 +165,13 @@ public class ProteinFinder {
         // Set up the blast parameters.
         this.protParms = new BlastParms().maxE(MAX_E_VAL_PROT);
         this.dnaParms = new BlastParms().maxE(MAX_E_VAL_DNA).maxPerQuery(1);
+    }
+
+    /**
+     * @return the name of the role definition file for this finder
+     */
+    public File getRoleFile() {
+        return new File(this.finderDir, ROLE_FILE_NAME);
     }
 
     /**
@@ -177,7 +184,7 @@ public class ProteinFinder {
     public void createProteinFile(GenomeSource genomes) throws IOException {
         // Our strategy is to loop through each genome's pegs, writing the ones
         // with interesting roles.
-        File protFile = new File(this.finderDir, PROTEIN_FILE_NAME);
+        File protFile = getProteinFile();
         if (! protFile.exists()) {
             log.info("Writing protein file to {}.", protFile);
             try (var protStream = new FastaOutputStream(protFile)) {
@@ -349,7 +356,7 @@ public class ProteinFinder {
         var retVal = new HashMap<String, List<Location>>(this.roleMap.size() * 2);
         // Perform the BLAST to find the protein hits.
         DnaBlastDB db = DnaBlastDB.createOrLoad(dnaFile, GC_PROT);
-        File protFile = new File(this.finderDir, PROTEIN_FILE_NAME);
+        File protFile = this.getProteinFile();
         ProteinStream prots = new ProteinInputStream(protFile);
         var hits = db.blast(prots, this.protParms);
         // Only proceed if there is at least one hit.
@@ -387,6 +394,13 @@ public class ProteinFinder {
             log.info("{} hits for {} roles stored in SOUR protein hit map.", stored, retVal.size());
         }
         return retVal;
+    }
+
+    /**
+     * @return the name of the protein FASTA file
+     */
+    public File getProteinFile() {
+        return new File(this.finderDir, PROTEIN_FILE_NAME);
     }
 
     /**
@@ -530,7 +544,7 @@ public class ProteinFinder {
             int taxId = refMap.get(genomeId);
             String comment = String.format("%d\t%s", taxId, speciesMap.get(taxId));
             String sequence = seqMap.get(P3Connection.getString(feature, "na_sequence_md5"));
-            if (! StringUtils.isBlank(sequence)) {
+            if (! StringUtils.isBlank(sequence) && DnaKmers.isClean(sequence)) {
                 roleFastaStream.write(new Sequence(fid, comment, sequence));
                 retVal++;
             }
