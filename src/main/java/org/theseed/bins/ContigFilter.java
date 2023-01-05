@@ -3,10 +3,8 @@
  */
 package org.theseed.bins;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import org.theseed.counters.CountMap;
+import org.theseed.genome.Contig;
 import org.theseed.sequence.Sequence;
 
 /**
@@ -22,12 +20,6 @@ public class ContigFilter {
     // FIELDS
     /** parameter object containing filter parameters */
     private BinParms parms;
-    /** pattern for coverage keywords in the comment */
-    private static final Pattern COMMENT_COVG_PATTERN = Pattern.compile("\\b(?:covg|cov|multi|coverage)[= ](\\d+(?:\\.\\d+)?)\\b");
-    /** pattern for coverage keywords in the contig ID */
-    private static final Pattern LABEL_COVG_PATTERN = Pattern.compile("_(?:coverage|covg|cov)_(\\d+(?:\\.\\d+)?)(?:_|\\b)");
-    /** default coverage to use if none can be computed */
-    private static final double DEFAULT_COVERAGE = 50.0;
 
     /**
      * Initialize a contig filter.
@@ -49,19 +41,9 @@ public class ContigFilter {
     public Bin computeBin(Sequence contig, CountMap<String> counters) {
         // Compute the sequence length.
         int len = contig.length();
-        // Now we compute the coverage.  First we look for it in the label, then in the comment, then we default.
-        double coverage = DEFAULT_COVERAGE;
-        final String contigId = contig.getLabel();
-        Matcher m = LABEL_COVG_PATTERN.matcher(contigId);
-        if (m.find())
-            coverage = Double.valueOf(m.group(1));
-        else {
-            m = COMMENT_COVG_PATTERN.matcher(contig.getComment());
-            if (m.find())
-                coverage = Double.valueOf(m.group(1));
-        }
+        double coverage = Contig.computeCoverage(contig);
         // We have the coverage and the length.  Build the bin.
-        Bin retVal = new Bin(contigId, len, coverage);
+        Bin retVal = new Bin(contig.getLabel(), len, coverage);
         // Compute what to do with the bin.
         Bin.Status status;
         if (len < this.parms.getBinLenFilter()) {
