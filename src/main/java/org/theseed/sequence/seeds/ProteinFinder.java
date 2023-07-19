@@ -541,8 +541,9 @@ public class ProteinFinder {
         for (JsonObject feature : featureBatch) {
             String fid = P3Connection.getString(feature, "patric_id");
             String genomeId = P3Connection.getString(feature, "genome_id");
+            String function = P3Connection.getString(feature, "product");
             int taxId = refMap.get(genomeId);
-            String comment = String.format("%d\t%s", taxId, speciesMap.get(taxId));
+            String comment = String.format("%d\t%s\t%s", taxId, speciesMap.get(taxId), function);
             String sequence = seqMap.get(P3Connection.getString(feature, "na_sequence_md5"));
             if (! StringUtils.isBlank(sequence) && DnaKmers.isClean(sequence)) {
                 roleFastaStream.write(new Sequence(fid, comment, sequence));
