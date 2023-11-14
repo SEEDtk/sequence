@@ -7,9 +7,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.NoSuchAlgorithmException;
-import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -34,9 +35,9 @@ public class ProteinKmerHashMap<T> {
     /** protein MD5 computer */
     private MD5Hex md5Engine;
     /** MD5 map */
-    private HashMap<String, Md5Entry> md5Map;
+    private Map<String, Md5Entry> md5Map;
     /** kmer hash */
-    private HashMap<String, Set<String>> kmerMap;
+    private Map<String, Set<String>> kmerMap;
     /** kmer size */
     private int kmerSize;
     /** result returned when no protein is close */
@@ -166,14 +167,37 @@ public class ProteinKmerHashMap<T> {
      * @param K		kmer size
      */
     public ProteinKmerHashMap(int K) {
+        this.setup(K);
+        this.kmerMap = new ConcurrentHashMap<>();
+        this.md5Map = new ConcurrentHashMap<>();
+    }
+
+    /**
+     * Initialize the support fields.
+     *
+     * @param K		kmer size
+     */
+    protected void setup(int K) {
         this.kmerSize = K;
-        this.kmerMap = new HashMap<>();
-        this.md5Map = new HashMap<>();
         try {
             this.md5Engine = new MD5Hex();
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException("Missing MD5 algorithm on this installation: " + e.getMessage());
         }
+    }
+
+    /**
+     * Construct a blank, empty protein kmer hash using a size estimate.
+     *
+     * @param K		kmer size
+     * @param est	estimated number of proteins.
+     */
+    public ProteinKmerHashMap(int K, int est) {
+        this.setup(K);
+        int hashSize = est * 4 / 3 + 1;
+        int fullSize = hashSize * K;
+        this.md5Map = new ConcurrentHashMap<>(hashSize);
+        this.kmerMap = new ConcurrentHashMap<>(fullSize);
     }
 
     /**
@@ -253,7 +277,9 @@ public class ProteinKmerHashMap<T> {
         // Now loop through the kmers, putting this MD5 into each kmer's protein set.
         for (String kmer : kmers) {
             Set<String> md5Set = this.kmerMap.computeIfAbsent(kmer, x -> new TreeSet<String>());
-            md5Set.add(md5);
+            synchronized (md5Set) {
+                md5Set.add(md5);
+            }
         }
     }
 
