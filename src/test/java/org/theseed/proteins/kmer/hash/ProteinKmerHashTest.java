@@ -54,7 +54,7 @@ class ProteinKmerHashTest {
                 var result = kmerMap.findClosest(prot);
                 log.info("Results for protein {} with annotation {}.", md5, annotation);
                 log.info("Hit count {}, similarity {}.", result.getSimCount(), result.getSimValue());
-                assertThat(result.getSimCount(), equalTo(expHits));
+                assertThat(md5, result.getSimCount(), equalTo(expHits));
                 if (! result.isEmpty()) {
                     log.info("Value is {}.", result.getValue());
                     assertThat(result.getMd5(), equalTo(expMd5));

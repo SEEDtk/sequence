@@ -7,10 +7,13 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.IntStream;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -36,8 +39,8 @@ public class ProteinKmerHashMap<T> {
     private MD5Hex md5Engine;
     /** MD5 map */
     private Map<String, Md5Entry> md5Map;
-    /** kmer hash */
-    private Map<String, Set<String>> kmerMap;
+    /** kmer hashes */
+    private List<Map<ProteinEncoding, Set<String>>> kmerMaps;
     /** kmer size */
     private int kmerSize;
     /** result returned when no protein is close */
@@ -168,7 +171,6 @@ public class ProteinKmerHashMap<T> {
      */
     public ProteinKmerHashMap(int K) {
         this.setup(K);
-        this.kmerMap = new ConcurrentHashMap<>();
         this.md5Map = new ConcurrentHashMap<>();
     }
 
@@ -184,6 +186,9 @@ public class ProteinKmerHashMap<T> {
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException("Missing MD5 algorithm on this installation: " + e.getMessage());
         }
+        // Now we build the kmer maps.  There is one for each starting letter.
+        this.kmerMaps = new ArrayList<>(26);
+        IntStream.range(0, 26).forEach(i -> this.kmerMaps.add(new ConcurrentHashMap<ProteinEncoding, Set<String>>()));
     }
 
     /**
@@ -195,9 +200,7 @@ public class ProteinKmerHashMap<T> {
     public ProteinKmerHashMap(int K, int est) {
         this.setup(K);
         int hashSize = est * 4 / 3 + 1;
-        int fullSize = hashSize * K;
         this.md5Map = new ConcurrentHashMap<>(hashSize);
-        this.kmerMap = new ConcurrentHashMap<>(fullSize);
     }
 
     /**
@@ -242,7 +245,7 @@ public class ProteinKmerHashMap<T> {
                 }
             }
             log.info("{} proteins processed, {} skipped, {} proteins stored, {} kmers.",
-                    protCount, skipCount, retVal.md5Map.size(), retVal.kmerMap.size());
+                    protCount, skipCount, retVal.md5Map.size(), retVal.getKmerCount());
         }
         return retVal;
     }
@@ -276,11 +279,25 @@ public class ProteinKmerHashMap<T> {
         this.md5Map.put(md5, entry);
         // Now loop through the kmers, putting this MD5 into each kmer's protein set.
         for (String kmer : kmers) {
-            Set<String> md5Set = this.kmerMap.computeIfAbsent(kmer, x -> new TreeSet<String>());
+            ProteinEncoding encoding = new ProteinEncoding(kmer);
+            var kmerMap = this.getKmerMap(kmer);
+            Set<String> md5Set = kmerMap.computeIfAbsent(encoding, x -> new TreeSet<String>());
             synchronized (md5Set) {
                 md5Set.add(md5);
             }
         }
+    }
+
+    /**
+     * @return the map that should contain the specified kmer.
+     *
+     * @param kmer	kmer to check
+     */
+    private Map<ProteinEncoding, Set<String>> getKmerMap(String kmer) {
+        int idx = kmer.charAt(0) - 'A';
+        if (idx < 0 || idx > this.kmerMaps.size())
+            throw new IllegalArgumentException("Invalid kmer string \"" + kmer + "\".");
+        return this.kmerMaps.get(idx);
     }
 
     /**
@@ -297,7 +314,9 @@ public class ProteinKmerHashMap<T> {
         CountMap<String> hitCounts = new CountMap<String>();
         // Loop through the kmers, counting them.
         for (String kmer : kmers) {
-            Set<String> md5Set = this.kmerMap.get(kmer);
+            ProteinEncoding encoding = new ProteinEncoding(kmer);
+            var kmerMap = this.getKmerMap(kmer);
+            Set<String> md5Set = kmerMap.get(encoding);
             if (md5Set != null) {
                 for (String md5 : md5Set)
                     hitCounts.count(md5);
@@ -319,7 +338,7 @@ public class ProteinKmerHashMap<T> {
      * @return the number of kmers in the map
      */
     public int getKmerCount() {
-        return this.kmerMap.size();
+        return this.kmerMaps.stream().mapToInt(x -> x.size()).sum();
     }
 
 }
