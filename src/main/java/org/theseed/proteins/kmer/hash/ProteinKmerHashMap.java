@@ -3,6 +3,8 @@
  */
 package org.theseed.proteins.kmer.hash;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
@@ -12,6 +14,8 @@ import java.util.TreeSet;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.counters.CountMap;
+import org.theseed.io.TabbedLineReader;
 import org.theseed.sequence.MD5Hex;
 import org.theseed.sequence.ProteinKmers;
 
@@ -173,6 +177,53 @@ public class ProteinKmerHashMap<T> {
     }
 
     /**
+     * Load a protein kmer hash from a tab-delimited file.
+     *
+     * @param inFile	input file name
+     * @param K			kmer size
+     * @param pCol		index (1-based) or name of the protein column
+     * @param vCol		index (1-based) or name of the value column
+     *
+     * @return a protein kmer hash with string values loaded from the file
+     *
+     * @throws IOException
+     */
+    public static ProteinKmerHashMap<String> load(File inFile, int K, String pCol, String vCol)
+            throws IOException {
+        // Create the hash map.
+        ProteinKmerHashMap<String> retVal = new ProteinKmerHashMap<String>(K);
+        // Open the input file.
+        log.info("Loading proteins from {} with kmer size {}.", inFile, K);
+        try (TabbedLineReader inStream = new TabbedLineReader(inFile)) {
+            // Get the input column indices.
+            int pColIdx = inStream.findField(pCol);
+            int vColIdx = inStream.findField(vCol);
+            // Initialize the counters.
+            int skipCount = 0;
+            int protCount = 0;
+            // Loop through the input lines.
+            long lastMsg = System.currentTimeMillis();
+            for (var line : inStream) {
+                String protein = line.get(pColIdx);
+                if (protein.length() < K)
+                    skipCount++;
+                else {
+                    String value = line.get(vColIdx);
+                    retVal.addProtein(protein, value);
+                    protCount++;
+                    if (log.isInfoEnabled() && lastMsg - System.currentTimeMillis() >= 10000) {
+                        log.info("{} proteins loaded, {} skipped.", protCount, skipCount);
+                        lastMsg = System.currentTimeMillis();
+                    }
+                }
+            }
+            log.info("{} proteins processed, {} skipped, {} proteins stored, {} kmers.",
+                    protCount, skipCount, retVal.md5Map.size(), retVal.kmerMap.size());
+        }
+        return retVal;
+    }
+
+    /**
      * @return the kmer size
      */
     public int getKmerSize() {
@@ -215,8 +266,34 @@ public class ProteinKmerHashMap<T> {
      */
     public Result findClosest(String prot) {
         String protUC = StringUtils.upperCase(prot);
-        // TODO use the hash
-        return null;
+        ProteinKmers kmers = new ProteinKmers(protUC, this.kmerSize);
+        // This will track the hits for each MD5.
+        CountMap<String> hitCounts = new CountMap<String>();
+        // Loop through the kmers, counting them.
+        for (String kmer : kmers) {
+            Set<String> md5Set = this.kmerMap.get(kmer);
+            if (md5Set != null) {
+                for (String md5 : md5Set)
+                    hitCounts.count(md5);
+            }
+        }
+        Result retVal;
+        // Insure we have at least one hit.
+        if (hitCounts.size() == 0)
+            retVal = NOT_FOUND;
+        else {
+            int kCount = kmers.size();
+            var bestCount = hitCounts.getBestEntry();
+            retVal = new Result(bestCount.getCount(), kCount, bestCount.getKey());
+        }
+        return retVal;
+    }
+
+    /**
+     * @return the number of kmers in the map
+     */
+    public int getKmerCount() {
+        return this.kmerMap.size();
     }
 
 }
