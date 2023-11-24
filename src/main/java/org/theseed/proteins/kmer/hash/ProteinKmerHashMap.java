@@ -262,13 +262,15 @@ public class ProteinKmerHashMap<T> {
      *
      * @param prot		protein to add
      * @param value		associated value
+     *
+     * @return the protein MD5
      */
-    public void addProtein(String prot, T value) {
+    public String addProtein(String prot, T value) {
         String protUC = StringUtils.upperCase(prot);
         // Get the MD5 for this protein.
-        String md5;
+        String retVal;
         try {
-            md5 = this.md5Engine.checksum(protUC);
+            retVal = this.md5Engine.checksum(protUC);
         } catch (UnsupportedEncodingException e) {
             throw new IllegalArgumentException("Invalid characters in protein string.");
         }
@@ -276,16 +278,17 @@ public class ProteinKmerHashMap<T> {
         ProteinKmers kmers = new ProteinKmers(protUC, this.kmerSize);
         // Put this protein into the hash.
         Md5Entry entry = new Md5Entry(kmers.size(), value);
-        this.md5Map.put(md5, entry);
+        this.md5Map.put(retVal, entry);
         // Now loop through the kmers, putting this MD5 into each kmer's protein set.
         for (String kmer : kmers) {
             ProteinEncoding encoding = new ProteinEncoding(kmer);
             var kmerMap = this.getKmerMap(kmer);
             Set<String> md5Set = kmerMap.computeIfAbsent(encoding, x -> new TreeSet<String>());
             synchronized (md5Set) {
-                md5Set.add(md5);
+                md5Set.add(retVal);
             }
         }
+        return retVal;
     }
 
     /**
@@ -308,20 +311,11 @@ public class ProteinKmerHashMap<T> {
      * @return a result containing stats about the protein found and its associated value
      */
     public Result findClosest(String prot) {
-        String protUC = StringUtils.upperCase(prot);
-        ProteinKmers kmers = new ProteinKmers(protUC, this.kmerSize);
-        // This will track the hits for each MD5.
-        CountMap<String> hitCounts = new CountMap<String>();
-        // Loop through the kmers, counting them.
-        for (String kmer : kmers) {
-            ProteinEncoding encoding = new ProteinEncoding(kmer);
-            var kmerMap = this.getKmerMap(kmer);
-            Set<String> md5Set = kmerMap.get(encoding);
-            if (md5Set != null) {
-                for (String md5 : md5Set)
-                    hitCounts.count(md5);
-            }
-        }
+        // Compute the incoming protein kmers.
+        ProteinKmers kmers = getProtKmers(prot);
+        // Get the hit counts.
+        CountMap<String> hitCounts = computeProtHits(kmers);
+        // Extract the best result.
         Result retVal;
         // Insure we have at least one hit.
         if (hitCounts.size() == 0)
@@ -335,10 +329,79 @@ public class ProteinKmerHashMap<T> {
     }
 
     /**
+     * @return the hit count for each MD5 with a kmer in comment
+     *
+     * @param kmers		protein kmers to use
+     */
+    private CountMap<String> computeProtHits(ProteinKmers kmers) {
+        // This will track the hits for each MD5.
+        CountMap<String> retVal = new CountMap<String>();
+        // Loop through the kmers, counting them.
+        for (String kmer : kmers) {
+            ProteinEncoding encoding = new ProteinEncoding(kmer);
+            var kmerMap = this.getKmerMap(kmer);
+            Set<String> md5Set = kmerMap.get(encoding);
+            if (md5Set != null) {
+                for (String md5 : md5Set)
+                    retVal.count(md5);
+            }
+        }
+        return retVal;
+    }
+
+    /**
+     * @return the kmers for a protein
+     *
+     * @param prot		protein of interest
+     */
+    private ProteinKmers getProtKmers(String prot) {
+        String protUC = StringUtils.upperCase(prot);
+        ProteinKmers kmers = new ProteinKmers(protUC, this.kmerSize);
+        return kmers;
+    }
+
+    /**
+     * Find the proteins closer than a specified threshold to an incoming protein
+     *
+     * @param prot		protein of interest
+     * @param min		minimum acceptable similarity score
+     *
+     * @return a list of results for proteins closer than a certain threshold
+     */
+    public List<Result> findClose(String prot, double min) {
+        // Compute the incoming protein kmers.
+        ProteinKmers kmers = getProtKmers(prot);
+        int kCount = kmers.size();
+        // Get the hit counts.
+        CountMap<String> hitCounts = computeProtHits(kmers);
+        // Extract the acceptable results.
+        List<Result> retVal = new ArrayList<Result>();
+        for (var count : hitCounts.counts()) {
+            Result result = new Result(count.getCount(), kCount, count.getKey());
+            if (result.getSimValue() >= min)
+                retVal.add(result);
+        }
+        return retVal;
+    }
+
+    /**
      * @return the number of kmers in the map
      */
     public int getKmerCount() {
         return this.kmerMaps.stream().mapToInt(x -> x.size()).sum();
+    }
+
+    /**
+     * @return the value associated with a protein MD5
+     *
+     * @param md5	MD5 for the protein of interest
+     */
+    public T getByMd5(String md5) {
+        T retVal = null;
+        Md5Entry entry = this.md5Map.get(md5);
+        if (entry != null)
+            retVal = entry.getValue();
+        return retVal;
     }
 
 }
