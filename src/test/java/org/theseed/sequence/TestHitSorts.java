@@ -8,10 +8,9 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.theseed.counters.Shuffler;
 import org.theseed.io.LineReader;
 import org.theseed.sequence.blast.BlastHit;
-
+import org.theseed.stats.Shuffler;
 import org.junit.jupiter.api.Test;
 import static org.hamcrest.Matchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;

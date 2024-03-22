@@ -9,8 +9,8 @@ import java.util.TreeSet;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.theseed.counters.QualityCountMap;
 import org.theseed.sequence.SequenceKmers;
+import org.theseed.stats.QualityCountMap;
 
 /**
  * This is a locality-sensitive hash that maps sequences to strings using a Mash/MinHash approach.  The sequence
