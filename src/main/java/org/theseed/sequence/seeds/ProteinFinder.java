@@ -32,6 +32,7 @@ import org.theseed.genome.iterator.GenomeSource;
 import org.theseed.io.TabbedLineReader;
 import org.theseed.locations.Location;
 import org.theseed.p3api.Criterion;
+import org.theseed.p3api.KeyBuffer;
 import org.theseed.p3api.P3Connection;
 import org.theseed.p3api.P3Connection.Table;
 import org.theseed.proteins.Role;
@@ -489,11 +490,11 @@ public class ProteinFinder {
                         List<JsonObject> featureBatch = new ArrayList<JsonObject>(BATCH_SIZE);
                         for (var feature : featureRecords) {
                             // Verify the genome ID and the MD5.
-                            String genomeId = P3Connection.getString(feature, "genome_id");
-                            String md5 = P3Connection.getString(feature, "na_sequence_md5");
+                            String genomeId = KeyBuffer.getString(feature, "genome_id");
+                            String md5 = KeyBuffer.getString(feature, "na_sequence_md5");
                             if (refMap.containsKey(genomeId) && ! StringUtils.isBlank(md5)) {
                                 // Verify the role.
-                                String function = P3Connection.getString(feature, "product");
+                                String function = KeyBuffer.getString(feature, "product");
                                 var roles = Feature.usefulRoles(this.roleMap, function);
                                 if (roles.stream().anyMatch(x -> x.getId().contentEquals(role))) {
                                     // Here the feature is worth keeping.  Insure there is room in the batch.
@@ -539,12 +540,12 @@ public class ProteinFinder {
         // Now loop through the batch, writing features.
         int retVal = 0;
         for (JsonObject feature : featureBatch) {
-            String fid = P3Connection.getString(feature, "patric_id");
-            String genomeId = P3Connection.getString(feature, "genome_id");
-            String function = P3Connection.getString(feature, "product");
+            String fid = KeyBuffer.getString(feature, "patric_id");
+            String genomeId = KeyBuffer.getString(feature, "genome_id");
+            String function = KeyBuffer.getString(feature, "product");
             int taxId = refMap.get(genomeId);
             String comment = String.format("%d\t%s\t%s", taxId, speciesMap.get(taxId), function);
-            String sequence = seqMap.get(P3Connection.getString(feature, "na_sequence_md5"));
+            String sequence = seqMap.get(KeyBuffer.getString(feature, "na_sequence_md5"));
             if (! StringUtils.isBlank(sequence) && DnaKmers.isClean(sequence)) {
                 roleFastaStream.write(new Sequence(fid, comment, sequence));
                 retVal++;
@@ -561,10 +562,10 @@ public class ProteinFinder {
      * @return a map from all the needed sequence MD5s to actual sequences
      */
     private Map<String, String> getSequenceMap(P3Connection p3, List<JsonObject> featureBatch) {
-        Set<String> seq_md5s = featureBatch.stream().map(x -> P3Connection.getString(x, "na_sequence_md5")).collect(Collectors.toSet());
+        Set<String> seq_md5s = featureBatch.stream().map(x -> KeyBuffer.getString(x, "na_sequence_md5")).collect(Collectors.toSet());
         var sequences = p3.getRecords(Table.SEQUENCE, seq_md5s, "md5,sequence");
         Map<String, String> retVal = sequences.entrySet().stream().collect(Collectors.toMap(x -> x.getKey(),
-                x -> P3Connection.getString(x.getValue(), "sequence")));
+                x -> KeyBuffer.getString(x.getValue(), "sequence")));
         return retVal;
     }
 
@@ -593,7 +594,7 @@ public class ProteinFinder {
         var taxRecords = p3.getRecords(Table.TAXONOMY, species, "taxon_id,taxon_name");
         for (var taxRecordEntry : taxRecords.entrySet()) {
             int speciesId = Integer.valueOf(taxRecordEntry.getKey());
-            retVal.put(speciesId, P3Connection.getString(taxRecordEntry.getValue(), "taxon_name"));
+            retVal.put(speciesId, KeyBuffer.getString(taxRecordEntry.getValue(), "taxon_name"));
         }
         log.info("{} species names loaded.", retVal.size());
         return retVal;

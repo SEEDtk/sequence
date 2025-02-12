@@ -22,7 +22,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.counters.CountMap;
-import org.theseed.p3api.P3Connection;
+import org.theseed.p3api.KeyBuffer;
 import org.theseed.sequence.FastaInputStream;
 import org.theseed.sequence.FastaOutputStream;
 import org.theseed.sequence.Sequence;
@@ -166,7 +166,7 @@ public class BinGroup implements Iterable<Bin> {
             // Read in the counts.
             JsonObject counts = groupObject.getMapOrDefault(GroupKeys.COUNTS);
             for (var countName : counts.keySet()) {
-                int countValue = P3Connection.getInt(counts, countName);
+                int countValue = KeyBuffer.getInt(counts, countName);
                 this.stats.count(countName, countValue);
             }
         }
