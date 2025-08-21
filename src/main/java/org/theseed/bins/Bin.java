@@ -39,7 +39,7 @@ public class Bin implements Comparable<Bin> {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(Bin.class);
+    private static final Logger log = LoggerFactory.getLogger(Bin.class);
     /** name of the bin, usually derived from the recommended taxon */
     private String name;
     /** permanent ID of the bin */

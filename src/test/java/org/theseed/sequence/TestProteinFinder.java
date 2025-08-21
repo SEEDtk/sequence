@@ -23,7 +23,7 @@ import org.theseed.sequence.seeds.ProteinFinder;
 class TestProteinFinder {
 
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(TestProteinFinder.class);
+    private static final Logger log = LoggerFactory.getLogger(TestProteinFinder.class);
 
     @Test
     public void testFinding() throws IOException, InterruptedException {

@@ -15,6 +15,8 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 
 import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This is a version of the locally-sensitive sequence hash that stores its data on disk.  The
@@ -32,30 +34,26 @@ import org.apache.commons.io.FileUtils;
 public class LSHDiskSeqHash extends LSHSeqHash implements AutoCloseable {
 
     // FIELDS
-
+    /** logging facility */
+    private static final Logger log = LoggerFactory.getLogger(LSHDiskSeqHash.class);
     /** name for the control file */
     private static final String CONTROL_FILE_NAME = "lsh_hash.txt";
-
     /** name of the directory containing the bucket files */
-    private File mainDir;
-
+    private final File mainDir;
     /** hash of buckets in memory, by file name */
-    private Map<File, Bucket> bucketCache;
-
+    private final Map<File, Bucket> bucketCache;
     /** optimal cache size */
     private static int cacheLimit = 1000;
-
     /** recommended kmer size */
-    private int kmerSize;
-
+    private final int kmerSize;
     /** comparator for bucket cache sort */
-    private static EntryCompare COMPARATOR = new EntryCompare();
+    private static final EntryCompare COMPARATOR = new EntryCompare();
 
     protected LSHDiskSeqHash(int w, int s, int b, int K, File dir) {
         super(w, s, b);
         this.kmerSize = K;
         this.mainDir = dir;
-        this.bucketCache = new HashMap<File, Bucket>(s * b);
+        this.bucketCache = new HashMap<>(s * b);
     }
 
     /**
@@ -157,7 +155,7 @@ public class LSHDiskSeqHash extends LSHSeqHash implements AutoCloseable {
                 try {
                     log.debug("Loading bucket from {} into cache.", bucketFile);
                     retVal = Bucket.load(bucketFile);
-                } catch (Exception e) {
+                } catch (IOException | ClassNotFoundException e) {
                     throw new RuntimeException("Error loading bucket file " + bucketFile + ": " + e.toString());
                 }
             } else {
@@ -180,7 +178,7 @@ public class LSHDiskSeqHash extends LSHSeqHash implements AutoCloseable {
         int deletions = this.bucketCache.size() - limit;
         if (deletions > 0) {
             // We want get a set of the buckets that need to be deleted.
-            SortedSet<Map.Entry<File, Bucket>> oldBuckets = new TreeSet<Map.Entry<File,Bucket>>(COMPARATOR);
+            SortedSet<Map.Entry<File, Bucket>> oldBuckets = new TreeSet<>(COMPARATOR);
             // Loop through the buckets in the hash.
             for (Map.Entry<File, Bucket> entry : this.bucketCache.entrySet())
                 if (oldBuckets.size() < deletions)

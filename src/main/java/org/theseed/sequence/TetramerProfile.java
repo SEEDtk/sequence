@@ -7,9 +7,6 @@ import java.util.Arrays;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * This class computes the tetramer profile for a DNA sequence.  A tetramer is represented by 8 bits (2 per nucleotide), and a
  * reverse compliment has the same value as the original string.  Because some sequences are palindromes, this nets us 136 different
@@ -21,9 +18,6 @@ import org.slf4j.LoggerFactory;
 public class TetramerProfile {
 
     // FIELDS
-    /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(TetramerProfile.class);
-
     /** normalized tetramer profile */
     private double[] profile;
     /** map of tetramer numbers to tetramer indices */
@@ -45,25 +39,12 @@ public class TetramerProfile {
         else for (int i = loc - 1; i < n && retVal >= 0; i++) {
             retVal <<= 2;
             switch (dna.charAt(i)) {
-            case 'A':
-            case 'a':
-                break;
-            case 'C':
-            case 'c':
-                retVal += 1;
-                break;
-            case 'G':
-            case 'g':
-                retVal += 2;
-                break;
-            case 'T':
-            case 't':
-            case 'U':
-            case 'u':
-                retVal += 3;
-                break;
-            default :
-                retVal = -1;
+            case 'A', 'a' -> {
+                }
+            case 'C', 'c' -> retVal += 1;
+            case 'G', 'g' -> retVal += 2;
+            case 'T', 't', 'U', 'u' -> retVal += 3;
+            default -> retVal = -1;
             }
         }
         return retVal;
@@ -113,7 +94,7 @@ public class TetramerProfile {
      * @param len			length of desired profile
      */
     public TetramerProfile(String sequence, int pos, int len) {
-        init(sequence, pos, len);
+        this.init(sequence, pos, len);
     }
 
     /**
@@ -123,7 +104,7 @@ public class TetramerProfile {
      * @param pos			starting position (1-based)
      * @param len			length of desired profile
      */
-    protected void init(String sequence, int pos, int len) {
+    protected final void init(String sequence, int pos, int len) {
         this.profile = new double[TETRA_SIZE];
         Arrays.fill(this.profile, 0.0);
         // Compute the number of tetramers in this sequence.
@@ -163,10 +144,7 @@ public class TetramerProfile {
             return false;
         }
         TetramerProfile other = (TetramerProfile) obj;
-        if (!Arrays.equals(this.profile, other.profile)) {
-            return false;
-        }
-        return true;
+        return Arrays.equals(this.profile, other.profile);
     }
 
     @Override

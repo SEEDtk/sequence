@@ -12,9 +12,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import org.slf4j.Logger;
-
-import org.slf4j.LoggerFactory;
 import org.theseed.io.ErrorQueue;
 import org.theseed.io.LineReader;
 import org.theseed.sequence.FastaInputStream;
@@ -44,12 +41,10 @@ import org.theseed.utils.ProcessUtils;
 public class ClustalPipeline {
 
     // FIELDS
-    /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(ClustalPipeline.class);
     /** path to CLUSTAL software */
     protected static String CLUSTAL_PATH = System.getenv("CLUSTAL_PATH");
     /** parameter object */
-    private Parms clustalParms;
+    private final Parms clustalParms;
     /** output sequence hash */
     private ConcurrentHashMap<String, Sequence> alignment;
 
@@ -68,7 +63,7 @@ public class ClustalPipeline {
         List<String> command = this.clustalParms.get(program);
         ProcessBuilder builder = new ProcessBuilder(command);
         // Create the alignment storage buffer.
-        this.alignment = new ConcurrentHashMap<String, Sequence>(100);
+        this.alignment = new ConcurrentHashMap<>(100);
         // Start Clustal.
         Process process = builder.start();
         // Create the output consumers.
@@ -76,7 +71,7 @@ public class ClustalPipeline {
                 FastaInputStream outputStream = new FastaInputStream(process.getInputStream())) {
             // Queue up the error messages.  There will be nothing unless something bad happens.
             // The error message list is owned by the consumer and we CANNOT modify it.
-            List<String> errorBuffer = new ArrayList<String>();
+            List<String> errorBuffer = new ArrayList<>();
             ErrorQueue errorThread = new ErrorQueue(errorStream, errorBuffer);
             errorThread.start();
             // Set up a consumer to process the sequence output.
@@ -91,7 +86,7 @@ public class ClustalPipeline {
                 throw new RuntimeException("CLUSTALO call failed.");
         }
         // Build the list of sequences from the hash map and arrange them in order.
-        List<String> seqKeys = new ArrayList<String>(this.alignment.keySet());
+        List<String> seqKeys = new ArrayList<>(this.alignment.keySet());
         Collections.sort(seqKeys);
         // Produce the output list.
         List<Sequence> retVal = seqKeys.stream().map(x -> this.alignment.get(x)).collect(Collectors.toList());
@@ -106,9 +101,9 @@ public class ClustalPipeline {
 
         // FIELDS
         /** input stream */
-        private FastaInputStream sequencesIn;
+        private final FastaInputStream sequencesIn;
         /** output hash */
-        private Map<String, Sequence> sequencesOut;
+        private final Map<String, Sequence> sequencesOut;
 
         /**
          * Construct the sequence consumer.  Note that the output from the process comes in as an input stream.

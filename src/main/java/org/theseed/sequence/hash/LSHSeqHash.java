@@ -7,8 +7,6 @@ import java.util.Iterator;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.theseed.sequence.SequenceKmers;
 import org.theseed.stats.QualityCountMap;
 
@@ -23,6 +21,16 @@ import org.theseed.stats.QualityCountMap;
  *
  */
 public abstract class LSHSeqHash {
+
+    // FIELDS
+    /** number of stages */
+    private final int stages;
+    /** width of each signature */
+    private final int width;
+    /** number of buckets per stage */
+    private final int buckets;
+    /** large prime number for hashing */
+    protected static final long LARGE_PRIME =  433494437;
 
     /**
      * This class iterates through all the sketches in this hash.  Each sketch occurs once in
@@ -88,23 +96,6 @@ public abstract class LSHSeqHash {
 
     }
 
-    // FIELDS
-
-    /** large prime number for hashing */
-    protected static final long LARGE_PRIME =  433494437;
-
-    /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(LSHSeqHash.class);
-
-    /** number of stages */
-    private int stages;
-
-    /** width of each signature */
-    private int width;
-
-    /** number of buckets per stage */
-    private int buckets;
-
     /**
      * Construct a blank, empty sequence hash.
      *
@@ -169,10 +160,10 @@ public abstract class LSHSeqHash {
      */
     public void add(Sketch sketch) {
         // Calculate the buckets.
-        int[] buckets = this.hashSignature(sketch.getSignature());
+        int[] myBuckets = this.hashSignature(sketch.getSignature());
         // Place this target in the appropriate buckets.
         for (int i = 0; i < this.stages; i++)
-            this.addToBucket(i, buckets[i], sketch);
+            this.addToBucket(i, myBuckets[i], sketch);
     }
 
     /**
@@ -237,12 +228,12 @@ public abstract class LSHSeqHash {
      */
     protected SortedSet<Bucket.Result> search(int n, double maxDist, int[] signature) {
         // This will be the return set.
-        SortedSet<Bucket.Result> retVal = new TreeSet<Bucket.Result>();
+        SortedSet<Bucket.Result> retVal = new TreeSet<>();
         // Get the list of buckets to search.
-        int[] buckets = this.hashSignature(signature);
+        int[] myBuckets = this.hashSignature(signature);
         // Check each bucket for close sequences.
         for (int i = 0; i < this.stages; i++) {
-            Bucket bucket = this.getBucket(i, buckets[i]);
+            Bucket bucket = this.getBucket(i, myBuckets[i]);
             bucket.search(retVal, n, maxDist, signature);
         }
         return retVal;
@@ -264,7 +255,7 @@ public abstract class LSHSeqHash {
      * @return a QualityCountMap containing the number of good and bad sequences for each named cluster
      */
     public QualityCountMap<String> getQualityData() {
-        QualityCountMap<String> retVal = new QualityCountMap<String>();
+        QualityCountMap<String> retVal = new QualityCountMap<>();
         // Each incoming sequence appears as a sketch, and a copy of that sketch will appear
         // once in every stage.  We go through the buckets in the first stage.  For each,
         // we compute its buckets in all the stages using hashSignature.  Then we check

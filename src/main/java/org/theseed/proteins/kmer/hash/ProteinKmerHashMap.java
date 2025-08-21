@@ -34,7 +34,7 @@ public class ProteinKmerHashMap<T> {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(ProteinKmerHashMap.class);
+    private static final Logger log = LoggerFactory.getLogger(ProteinKmerHashMap.class);
     /** protein MD5 computer */
     private MD5Hex md5Engine;
     /** MD5 map */

@@ -72,7 +72,7 @@ public class ProteinFinder {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(ProteinFinder.class);
+    private static final Logger log = LoggerFactory.getLogger(ProteinFinder.class);
     /** name of directory containing the finder files */
     private File finderDir;
     /** role definition map for roles of interest */

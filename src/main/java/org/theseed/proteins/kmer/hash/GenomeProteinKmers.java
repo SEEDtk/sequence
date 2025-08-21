@@ -4,8 +4,6 @@
 package org.theseed.proteins.kmer.hash;
 
 import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 
 /**
@@ -18,8 +16,6 @@ import org.slf4j.LoggerFactory;
 public class GenomeProteinKmers {
 
     // FIELDS
-    /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(GenomeProteinKmers.class);
     /** protein kmer hash map for this genome, maps each MD5 to its best annotation (count and string) */
     private ProteinKmerHashMap<Proposal> protMap;
     /** minimum similarity threshold */
@@ -91,7 +87,7 @@ public class GenomeProteinKmers {
      * @param min	minimum similarity score
      */
     public GenomeProteinKmers(int K, double min) {
-        this.protMap = new ProteinKmerHashMap<Proposal>(K);
+        this.protMap = new ProteinKmerHashMap<>(K);
         this.minSim = min;
     }
 

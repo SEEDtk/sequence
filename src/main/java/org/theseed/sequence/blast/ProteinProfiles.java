@@ -35,7 +35,7 @@ public class ProteinProfiles {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(ProteinProfiles.class);
+    private static final Logger log = LoggerFactory.getLogger(ProteinProfiles.class);
     /** role ID mapping to parse the functions */
     private RoleMap roleMap;
     /** cluster ID to function mapping */

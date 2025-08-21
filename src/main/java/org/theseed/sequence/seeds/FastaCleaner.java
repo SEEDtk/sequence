@@ -26,7 +26,7 @@ public abstract class FastaCleaner {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(FastaCleaner.class);
+    private static final Logger log = LoggerFactory.getLogger(FastaCleaner.class);
 
     /**
      * Clean a FASTA file.

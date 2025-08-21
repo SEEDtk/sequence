@@ -9,8 +9,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.theseed.genome.Feature;
 import org.theseed.locations.Location;
 import org.theseed.sequence.ExtendedProteinRegion;
@@ -29,22 +27,20 @@ import org.theseed.sequence.Sequence;
 public class SnipIterator implements Iterator<SnipColumn> {
 
     // FIELDS
-    /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(SnipIterator.class);
     /** list of wild sequences (including the base) */
-    private List<String> wildSequences;
+    private final List<String> wildSequences;
     /** aligned-sequence snip positions (base is first) */
-    private ISnipPosition[] alignedPositions;
+    private final ISnipPosition[] alignedPositions;
     /** array of locations being aligned */
-    private Location[] alignedLocations;
+    private final Location[] alignedLocations;
     /** array of feature IDs being aligned */
-    private String[] alignedFids;
+    private final String[] alignedFids;
     /** current position in the alignment */
     private int iPos;
     /** next column to return, or NULL if we are at the end */
     private SnipColumn next;
     /** width an the alignment */
-    private int width;
+    private final int width;
 
     /**
      * Create an iterator for a single alignment result.
@@ -56,7 +52,7 @@ public class SnipIterator implements Iterator<SnipColumn> {
      */
     public SnipIterator(RegionList regions, List<Sequence> alignment, Set<String> wildSet, List<String> genomeIds) {
         // Create the arrays.
-        this.wildSequences = new ArrayList<String>(wildSet.size());
+        this.wildSequences = new ArrayList<>(wildSet.size());
         this.alignedPositions = new ISnipPosition[genomeIds.size()];
         this.alignedLocations = new Location[genomeIds.size()];
         this.alignedFids = new String[genomeIds.size()];
@@ -184,7 +180,7 @@ public class SnipIterator implements Iterator<SnipColumn> {
     public static class Run implements Iterable<SnipColumn> {
 
         /** underlying iterator */
-        private SnipIterator iter;
+        private final SnipIterator iter;
 
         /**
          * Create an iteration run for a single alignment result.

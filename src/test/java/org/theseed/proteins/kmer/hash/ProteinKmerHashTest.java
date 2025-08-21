@@ -17,7 +17,7 @@ import org.theseed.sequence.ProteinKmers;
 class ProteinKmerHashTest {
 
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(ProteinKmerHashTest.class);
+    private static final Logger log = LoggerFactory.getLogger(ProteinKmerHashTest.class);
 
 
     @Test

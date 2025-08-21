@@ -49,7 +49,7 @@ public abstract class BlastDB {
     // FIELDS
 
     /** log stream */
-    protected static Logger log = LoggerFactory.getLogger(BlastDB.class);
+    private static final Logger log = LoggerFactory.getLogger(BlastDB.class);
     /** path to BLAST+ software */
     protected static String BLAST_PATH = System.getenv("BLAST_PATH");
     /** path to DIAMOND software (optional) */

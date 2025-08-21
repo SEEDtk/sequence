@@ -44,7 +44,7 @@ public class BinGroup implements Iterable<Bin> {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(BinGroup.class);
+    private static final Logger log = LoggerFactory.getLogger(BinGroup.class);
     /** map of contig IDs to bins */
     private Map<String, Bin> contigMap;
     /** set of bins */

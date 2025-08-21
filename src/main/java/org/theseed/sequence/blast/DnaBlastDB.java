@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.theseed.genome.Genome;
 import org.theseed.io.MarkerFile;
 import org.theseed.sequence.DnaStream;
@@ -22,6 +24,8 @@ import org.theseed.sequence.ProteinStream;
 public class DnaBlastDB extends BlastDB {
 
     // FIELDS
+    /** logging facility */
+    private static final Logger log = LoggerFactory.getLogger(DnaBlastDB.class);
     /** genetic code of this DNA blast database */
     private int geneticCode;
     /** array of file suffixes */
@@ -34,7 +38,7 @@ public class DnaBlastDB extends BlastDB {
      */
     protected DnaBlastDB(File fastaFile) {
         this.setFile(fastaFile);
-        getGC(this);
+        this.findGC();
         log.info("Using DNA blast database {} with genetic code {}.", fastaFile, this.geneticCode);
     }
 
@@ -44,8 +48,15 @@ public class DnaBlastDB extends BlastDB {
      * @param db			database of interest
      */
     private static void getGC(DnaBlastDB db) {
-        File marker = db.markerFile();
-        db.geneticCode = MarkerFile.readInt(marker);
+        db.findGC();
+    }
+
+    /**
+     * Determine the genetic code for this database.
+     */
+    private void findGC() {
+        File marker = this.markerFile();
+        this.geneticCode = MarkerFile.readInt(marker);
     }
 
     /**
@@ -170,6 +181,7 @@ public class DnaBlastDB extends BlastDB {
      * @return the list of blast hits found
      *
      */
+    @Override
     public List<BlastHit> psiBlast(File pssmFile, BlastParms parms, Map<String, String> qMap) {
         this.saveCommand("tblastn", parms);
         BlastParms myParms = parms.clone().set("-in_pssm", pssmFile.getPath());

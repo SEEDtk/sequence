@@ -10,6 +10,8 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.theseed.genome.Genome;
 import org.theseed.io.LineReader;
 import org.theseed.sequence.DnaStream;
@@ -22,6 +24,8 @@ import org.theseed.sequence.ProteinStream;
 public class ProteinBlastDB extends BlastDB {
 
     // FIELDS
+    /** logging facility */
+    private static final Logger log = LoggerFactory.getLogger(ProteinBlastDB.class);
     /** array of file suffixes */
     public static final String[] SUFFIXES = new String[] { ".pin", ".psq", ".phr", ".db.dmnd" };
     /** set of programs supported by Diamond */
@@ -119,6 +123,7 @@ public class ProteinBlastDB extends BlastDB {
      * @throws IOException
      * @throws InterruptedException
      */
+    @Override
     public List<BlastHit> psiBlast(File pssmFile, BlastParms parms, Map<String, String> qMap) {
         this.saveCommand("psiblast", parms);
         BlastParms myParms = parms.clone().set("-in_pssm", pssmFile.getPath());
