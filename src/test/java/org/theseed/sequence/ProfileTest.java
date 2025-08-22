@@ -3,9 +3,6 @@
  */
 package org.theseed.sequence;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
@@ -13,6 +10,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import org.junit.jupiter.api.Test;
 import org.theseed.genome.Feature;
 import org.theseed.genome.FeatureList;
 import org.theseed.genome.Genome;
@@ -23,8 +23,6 @@ import org.theseed.sequence.blast.BlastParms;
 import org.theseed.sequence.blast.DnaBlastDB;
 import org.theseed.sequence.blast.ProteinBlastDB;
 import org.theseed.sequence.blast.ProteinProfiles;
-
-import org.junit.jupiter.api.Test;
 
 
 /**
@@ -40,7 +38,7 @@ public class ProfileTest  {
         Genome g2 = new Genome(new File("data", "1685.390.gto"));
         BlastDB gdb = DnaBlastDB.create(new File(tempDir, "pblast.fa"), g2);
         File pFile = new File("data", "PhenTrnaSyntAlph.smp");
-        Map<String,String> qMap = new HashMap<String, String>();
+        Map<String,String> qMap = new HashMap<>();
         qMap.put("PhenTrnaSyntAlph", "Phenylalanyl-tRNA synthetase alpha chain (EC 6.1.1.20)");
         BlastParms parms = new BlastParms().maxE(1e-10);
         List<BlastHit> results = gdb.psiBlast(pFile, parms, qMap);
