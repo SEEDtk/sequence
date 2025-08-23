@@ -110,11 +110,13 @@ public abstract class BlastDB {
         // Get the path as an array of directory names.
         File[] path = Arrays.stream(StringUtils.split(System.getenv("PATH"), System.getProperty("path.separator")))
                 .map(x -> new File(x)).toArray(File[]::new);
-        for (int i = 0; i < path.length; i++) {
-            if (StringUtils.isBlank(BLAST_PATH) && checkForProgram(path[i], "blastp"))
-                BLAST_PATH = path[i].getAbsolutePath();
-            if (StringUtils.isBlank(DIAMOND_PATH) && checkForProgram(path[i], "diamond"))
-                DIAMOND_PATH = path[i].getAbsolutePath();
+        for (File path1 : path) {
+            if (StringUtils.isBlank(BLAST_PATH) && checkForProgram(path1, "blastp")) {
+                BLAST_PATH = path1.getAbsolutePath();
+            }
+            if (StringUtils.isBlank(DIAMOND_PATH) && checkForProgram(path1, "diamond")) {
+                DIAMOND_PATH = path1.getAbsolutePath();
+            }
         }
         log.info("Blast path is {}, diamond path is {}.", BLAST_PATH, DIAMOND_PATH);
     }
@@ -264,11 +266,11 @@ public abstract class BlastDB {
      * @return a list of BlastHit objects representing the hits
      */
     protected List<BlastHit> runBlast(String blastProgram, SequenceStream seqs, BlastParms myParms) {
-        List<BlastHit> retVal = null;
+        List<BlastHit> retVal;
         // Save the command specs.
         saveCommand(blastProgram, myParms);
         // Create a hash to map sequence labels to comments.
-        Map<String, String> qMap = new ConcurrentHashMap<String, String>();
+        Map<String, String> qMap = new ConcurrentHashMap<>();
         // Copy the input to a temporary buffer file.  Unfortunately, this is required to
         // get BLAST working in all environments.
         try (FastaOutputStream queryStream = new FastaOutputStream(this.tempFile)) {
@@ -320,7 +322,7 @@ public abstract class BlastDB {
     protected List<BlastHit> processBlast(String blastProgram, BlastParms myParms, Map<String, String> qMap,
             boolean protsIn) {
         // This will be the return value.
-        List<BlastHit> retVal = new ArrayList<BlastHit>();
+        List<BlastHit> retVal = new ArrayList<>();
         // Set up the parameters and form the command.
         myParms.set("-outfmt", BlastHit.OUT_FORMAT);
         myParms.set("-db", this.dbFile.getAbsolutePath());
@@ -338,7 +340,7 @@ public abstract class BlastDB {
                         myParms, retVal);
                 hitReader.start();
                 // Create a thread to save error log messages.  Generally there are none.
-                List<String> messages = new ArrayList<String>(30);
+                List<String> messages = new ArrayList<>(30);
                 ErrorQueue errorReader = new ErrorQueue(logReader, messages);
                 errorReader.start();
                 // Clean up the process.
@@ -374,11 +376,11 @@ public abstract class BlastDB {
     private class HitConsumer extends Thread {
 
         // FIELDS
-        private LineReader blastOutput;
-        private List<BlastHit> hitList;
-        private boolean proteinFlag;
-        private Map<String, String> qMap;
-        private BlastParms parms;
+        private final LineReader blastOutput;
+        private final List<BlastHit> hitList;
+        private final boolean proteinFlag;
+        private final Map<String, String> qMap;
+        private final BlastParms parms;
 
         /**
          * Construct a thread to create BLAST hits from the output stream.
@@ -553,7 +555,7 @@ public abstract class BlastDB {
         covg("percent coverage");
 
         // FIELDS
-        private String name;
+        private final String name;
 
         private ColorType(String name) {
             this.name = name;
@@ -568,15 +570,9 @@ public abstract class BlastDB {
         public Color computeColor(BlastHit.SeqData target, BlastHit hit) {
             double fraction = 1.0;
             switch (this) {
-            case ident:
-                fraction = ((double) hit.getNumIdentical()) / hit.getAlignLen();
-                break;
-            case sim:
-                fraction = ((double) hit.getNumSimilar()) / hit.getAlignLen();
-                break;
-            case covg:
-                fraction = ((double) hit.getNumSimilar()) / target.getLen();
-                break;
+            case ident -> fraction = ((double) hit.getNumIdentical()) / hit.getAlignLen();
+            case sim -> fraction = ((double) hit.getNumSimilar()) / hit.getAlignLen();
+            case covg -> fraction = ((double) hit.getNumSimilar()) / target.getLen();
             }
             Color retVal;
             if (fraction >= 1.0)
@@ -592,6 +588,7 @@ public abstract class BlastDB {
             return retVal;
         }
 
+        @Override
         public String getDescription() {
             return this.name;
         }
@@ -608,10 +605,10 @@ public abstract class BlastDB {
         SUBJECT(BlastHit.SUBJECT, "subject sequences", "Sort by Subject Sequence");
 
         // FIELDS
-        private int sortIdx;
-        private int otherIdx;
-        private String plural;
-        private String description;
+        private final int sortIdx;
+        private final int otherIdx;
+        private final String plural;
+        private final String description;
 
         private SortType(int idx, String plural, String description) {
             this.sortIdx = idx;
