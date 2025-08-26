@@ -3,7 +3,19 @@
  */
 package org.theseed.sequence;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
+
 import org.apache.commons.lang3.StringUtils;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.arrayContaining;
+import static org.hamcrest.Matchers.emptyString;
+import static org.hamcrest.Matchers.equalTo;
+import org.junit.jupiter.api.Test;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
 import org.theseed.locations.Location;
@@ -11,17 +23,6 @@ import org.theseed.sequence.clustal.ClustalPipeline;
 import org.theseed.sequence.clustal.RealSnipItem;
 import org.theseed.sequence.clustal.SnipColumn;
 import org.theseed.sequence.clustal.SnipIterator;
-
-import org.junit.jupiter.api.Test;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
 
 /**
  * @author Bruce Parrello
@@ -87,7 +88,7 @@ public class TestSnips {
         ClustalPipeline pipeline = new ClustalPipeline(tempFile);
         List<Sequence> alignment = pipeline.run();
         List<String> genomes = Arrays.asList("1313.5684", "1313.7001", "1313.7090", "1313.5593", "1313.6795");
-        Set<String> wildSet = new TreeSet<String>();
+        Set<String> wildSet = new TreeSet<>();
         wildSet.add("1313.5684");
         wildSet.add("360106.5");
         SnipIterator.Run snipRun = new SnipIterator.Run(phesRegions, alignment, wildSet, genomes);
