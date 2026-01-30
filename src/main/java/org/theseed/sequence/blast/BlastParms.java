@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.theseed.utils.Parms;
 
 /**
@@ -18,7 +19,7 @@ import org.theseed.utils.Parms;
  *
  * @author Bruce Parrello
  */
-public class BlastParms extends Parms implements Cloneable {
+public class BlastParms extends Parms {
 
     // FIELDS
     /** minimum acceptable length for a result, as a percent of the query length */
@@ -40,6 +41,14 @@ public class BlastParms extends Parms implements Cloneable {
     /** minimum absolute length for a match */
     private int minMatchLen;
 
+    /**
+     * Construct a blank parameter list.
+     */
+    public BlastParms() {
+        super();
+        setDefaults();
+    }
+    
     /**
      * Add an option parameter.  This calls through to the super-class, but returns an
      * instance of this class.
@@ -94,8 +103,7 @@ public class BlastParms extends Parms implements Cloneable {
     /**
      * Set the defaults for the post-processing parms.
      */
-    @Override
-    protected void setDefaults() {
+    private void setDefaults() {
         this.pctLenOfQuery = 0.0;
         this.pctLenOfSubject = 0.0;
         this.pctIdentity = 0.0;
@@ -254,7 +262,8 @@ public class BlastParms extends Parms implements Cloneable {
      * @return a copy of this object.
      */
     @Override
-    public BlastParms clone() {
+    public BlastParms clone() throws CloneNotSupportedException {
+        super.clone();
         BlastParms retVal = new BlastParms();
         this.copyValues(retVal);
         retVal.pctLenOfQuery = this.pctLenOfQuery;
@@ -384,21 +393,22 @@ public class BlastParms extends Parms implements Cloneable {
      * @return a list of strings to pass to the process builder
      */
     public List<String> getForDiamond(String commandString, String blastProgram) {
-        List<String> retVal = new ArrayList<String>(this.size() + 20);
+        List<String> retVal = new ArrayList<>(this.size() + 20);
         retVal.add(commandString);
         retVal.add(blastProgram);
         for (String option : this.unary)
             retVal.add("-" + option);
         for (Map.Entry<String, String> parm : this.binary.entrySet()) {
             String key = parm.getKey();
-            retVal.add("-" + StringUtils.replace(key, "_", "-"));
-            if (key.contentEquals("-outfmt")) {
-                String[] parts = StringUtils.split(parm.getValue(), ' ');
-                Arrays.stream(parts).forEach(x -> retVal.add(x));
-            } else if (key.contentEquals("-db"))
-                retVal.add(parm.getValue() + ".db");
-            else
-                retVal.add(parm.getValue());
+            retVal.add("-" + Strings.CS.replace(key, "_", "-"));
+            switch (key) {
+                case "-outfmt" -> {
+                    String[] parts = StringUtils.split(parm.getValue(), ' ');
+                    Arrays.stream(parts).forEach(x -> retVal.add(x));
+                }
+                case "-db" -> retVal.add(parm.getValue() + ".db");
+                default -> retVal.add(parm.getValue());
+            }
         }
         return retVal;
     }

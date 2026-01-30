@@ -126,7 +126,12 @@ public class ProteinBlastDB extends BlastDB {
     @Override
     public List<BlastHit> psiBlast(File pssmFile, BlastParms parms, Map<String, String> qMap) {
         this.saveCommand("psiblast", parms);
-        BlastParms myParms = parms.clone().set("-in_pssm", pssmFile.getPath());
+        BlastParms myParms;
+        try { 
+            myParms = parms.clone().set("-in_pssm", pssmFile.getPath());
+        } catch (CloneNotSupportedException e) {
+            throw new RuntimeException(e);
+        }
         List<BlastHit> retVal = this.processBlast("psiblast", myParms, qMap, true);
         return retVal;
     }
@@ -158,14 +163,24 @@ public class ProteinBlastDB extends BlastDB {
 
     @Override
     public List<BlastHit> blast(ProteinStream proteins, BlastParms parms) {
-        BlastParms myParms = parms.clone();
+        BlastParms myParms;
+        try { 
+            myParms = parms.clone();
+        } catch (CloneNotSupportedException e) {
+            throw new RuntimeException(e);
+        }
         List<BlastHit> retVal = this.runBlast("blastp", proteins, myParms);
         return retVal;
     }
 
     @Override
     public List<BlastHit> blast(DnaStream contigs, BlastParms parms) {
-        BlastParms myParms = parms.clone().query_gencode(contigs.getGeneticCode());
+        BlastParms myParms;
+        try { 
+            myParms = parms.clone().query_gencode(contigs.getGeneticCode());
+        } catch (CloneNotSupportedException e) {
+            throw new RuntimeException(e);
+        }
         List<BlastHit> retVal = this.runBlast("blastx", contigs, myParms);
         return retVal;
     }
