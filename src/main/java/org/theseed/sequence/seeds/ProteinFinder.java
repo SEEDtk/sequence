@@ -121,7 +121,7 @@ public class ProteinFinder {
             FileUtils.forceMkdir(dir);
         }
         this.finderDir = dir;
-        File realRoleFile = this.getRoleFile();
+        File realRoleFile = this.getRoleFileInternal();
         if (! realRoleFile.equals(roleFile)) {
             // Here we must copy the role file into the finder directory.
             log.info("Copying role file {} to {}.", roleFile, realRoleFile);
@@ -143,7 +143,7 @@ public class ProteinFinder {
         if (! dir.isDirectory())
             throw new FileNotFoundException("Finder directory " + dir + " is not found or invalid.");
         this.finderDir = dir;
-        File roleFile = this.getRoleFile();
+        File roleFile = this.getRoleFileInternal();
         if (! roleFile.exists())
             throw new FileNotFoundException("No role file found in finder directory " + dir + ".");
         // Initialize the finder.
@@ -169,12 +169,21 @@ public class ProteinFinder {
     }
 
     /**
+     * This is a public method that other objects can use to compute role file names.
+     * It cannot be used in the constructor because it is considered overridable.
+     * 
      * @return the name of the role definition file for this finder
      */
     public File getRoleFile() {
-        return new File(this.finderDir, ROLE_FILE_NAME);
+        return getRoleFileInternal();
     }
 
+    /**
+     * @return the name of the role definition file for this finder
+     */
+    private File getRoleFileInternal() {
+        return new File(this.finderDir, ROLE_FILE_NAME);
+    }
     /**
      * Create the protein query file, if it does not already exist.
      *
@@ -201,7 +210,7 @@ public class ProteinFinder {
                         if (! StringUtils.isBlank(prot)) {
                             // Now check the roles.
                             var roles = peg.getUsefulRoles(this.roleMap);
-                            if (roles.size() > 0) {
+                            if (! roles.isEmpty()) {
                                 // This is an interesting peg.  Write it out.
                                 Sequence seq = new Sequence(peg.getId(), roles.get(0).getId(), prot);
                                 protStream.write(seq);
@@ -332,7 +341,7 @@ public class ProteinFinder {
      */
     public Map<String, File> getFastas() {
         // The number of roles is small, and we want them in order, so we use a TreeMap.
-        Map<String, File> retVal = new TreeMap<String, File>();
+        Map<String, File> retVal = new TreeMap<>();
         // Loop through the roles.
         for (Role role : this.roleMap) {
             String roleId = role.getId();
@@ -438,7 +447,7 @@ public class ProteinFinder {
      */
     public static Map<String, List<Location>> loadSeedProteins(File loadFile) throws IOException {
         // Open the input file.
-        Map<String, List<Location>> retVal = new HashMap<String, List<Location>>(20);
+        Map<String, List<Location>> retVal = new HashMap<>(20);
         try (TabbedLineReader inStream = new TabbedLineReader(loadFile)) {
             for (var line : inStream) {
                 // Get this role.
@@ -446,7 +455,7 @@ public class ProteinFinder {
                 // Split out the location strings:  they are space-delimited.
                 String[] locationStrings = StringUtils.split(line.get(1), ' ');
                 // Convert them to locations and store them in the map.
-                List<Location> locs = new ArrayList<Location>(locationStrings.length);
+                List<Location> locs = new ArrayList<>(locationStrings.length);
                 for (String locationString : locationStrings)
                     locs.add(Location.fromString(locationString));
                 retVal.put(roleId, locs);
@@ -487,7 +496,7 @@ public class ProteinFinder {
                                 Criterion.EQ("product", roleName), Criterion.EQ("annotation", "PATRIC"));
                         log.info("{} features found.", featureRecords.size());
                         // We will accumulate a batch of features to process in here.
-                        List<JsonObject> featureBatch = new ArrayList<JsonObject>(BATCH_SIZE);
+                        List<JsonObject> featureBatch = new ArrayList<>(BATCH_SIZE);
                         for (var feature : featureRecords) {
                             // Verify the genome ID and the MD5.
                             String genomeId = KeyBuffer.getString(feature, "genome_id");
@@ -508,7 +517,7 @@ public class ProteinFinder {
                             }
                         }
                         // Write out any residual features.
-                        if (featureBatch.size() > 0)
+                        if (! featureBatch.isEmpty())
                             outCount += this.writeBatch(p3, roleFastaStream, featureBatch, refMap, speciesMap);
                     }
                     log.info("{} features written to {}.", outCount, roleFastaFile);
@@ -593,7 +602,7 @@ public class ProteinFinder {
         var retVal = new HashMap<Integer, String>(species.size() * 4 / 3 + 1);
         var taxRecords = p3.getRecords(Table.TAXONOMY, species, "taxon_id,taxon_name");
         for (var taxRecordEntry : taxRecords.entrySet()) {
-            int speciesId = Integer.valueOf(taxRecordEntry.getKey());
+            int speciesId = Integer.parseInt(taxRecordEntry.getKey());
             retVal.put(speciesId, KeyBuffer.getString(taxRecordEntry.getValue(), "taxon_name"));
         }
         log.info("{} species names loaded.", retVal.size());
@@ -610,7 +619,7 @@ public class ProteinFinder {
         /** ID of the role that triggered the hit */
         private String roleId;
         /** ID of the query contig */
-        private String contigId;
+        private final String contigId;
         /** ID of the proposed closest genome */
         private String refId;
         /** taxonomic ID of the species */
@@ -642,7 +651,7 @@ public class ProteinFinder {
             if (! m.matches())
                 throw new IllegalArgumentException("Invalid taxonomic specification in DNA blast result " + hit.getSubjectId() + ".");
             else {
-                this.taxId = Integer.valueOf(m.group(1));
+                this.taxId = Integer.parseInt(m.group(1));
                 this.name = m.group(2);
                 // The reference genome ID is in the subject ID.
                 this.refId = Feature.genomeOf(hit.getSubjectId());
@@ -785,10 +794,7 @@ public class ProteinFinder {
             } else if (!this.contigId.equals(other.contigId)) {
                 return false;
             }
-            if (this.taxId != other.taxId) {
-                return false;
-            }
-            return true;
+            return (this.taxId == other.taxId);
         }
 
         /**
@@ -909,7 +915,7 @@ public class ProteinFinder {
      */
     private Map<Location, Sequence> getLocationSequences(Set<Location> locs, File contigFile) throws IOException {
         // Map each contig to the locations in it.
-        Map<String, Collection<Location>> contigMap = new HashMap<String, Collection<Location>>(locs.size() * 4 / 3 + 1);
+        Map<String, Collection<Location>> contigMap = new HashMap<>(locs.size() * 4 / 3 + 1);
         for (Location loc : locs) {
             String contigId = loc.getContigId();
             Collection<Location> locList = contigMap.computeIfAbsent(contigId, x -> new ArrayList<Location>());
@@ -966,7 +972,7 @@ public class ProteinFinder {
      */
     public static Map<String, DnaHit> loadRefGenomes(File loadFile) throws IOException {
         // This will be the return map.
-        Map<String, DnaHit> retVal = new HashMap<String, DnaHit>(100);
+        Map<String, DnaHit> retVal = new HashMap<>(100);
         try (TabbedLineReader loadStream = new TabbedLineReader(loadFile)) {
             // Loop through the input.  Each one is a map entry.
             for (var line : loadStream) {
