@@ -86,7 +86,7 @@ public class ProteinFinder {
     /** minimum fraction hit length for protein blast */
     private double minFracProt;
     /** score sorter for DNA hits */
-    private DnaHit.ScoreSorter DNA_HIT_SCORE_SORTER = new DnaHit.ScoreSorter();
+    private static final DnaHit.ScoreSorter DNA_HIT_SCORE_SORTER = new DnaHit.ScoreSorter();
     /** name to give to the role file */
     public static final String ROLE_FILE_NAME = "roles.for.finder";
     /** name to give to the protein FASTA */
