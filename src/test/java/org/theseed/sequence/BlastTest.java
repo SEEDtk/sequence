@@ -12,19 +12,24 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.closeTo;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.lessThan;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.hamcrest.Matchers.not;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Test;
 import org.theseed.genome.Genome;
 import org.theseed.io.LineReader;
 import org.theseed.sequence.blast.BlastDB;
-import org.theseed.sequence.blast.DnaBlastDB;
-import org.theseed.sequence.blast.ProteinBlastDB;
-
 import org.theseed.sequence.blast.BlastHit;
 import org.theseed.sequence.blast.BlastParms;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Test;
-
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
+import org.theseed.sequence.blast.DnaBlastDB;
+import org.theseed.sequence.blast.ProteinBlastDB;
 
 /**
  *
@@ -35,18 +40,18 @@ import static org.hamcrest.Matchers.*;
  */
 public class BlastTest  {
 
-    private static final File tempDir = new File("data", "temp");
+    private static final File TEMP_DIR = new File("data", "temp");
 
     public BlastTest() throws Exception {
         // Set up our temp directory for blast files.
-        if (! tempDir.isDirectory())
-            FileUtils.forceMkdir(tempDir);
+        if (! TEMP_DIR.isDirectory())
+            FileUtils.forceMkdir(TEMP_DIR);
     }
 
     @AfterAll
     protected static void tearDown() throws Exception {
         // Clean the temp directory for blast files.
-        FileUtils.cleanDirectory(tempDir);
+        FileUtils.cleanDirectory(TEMP_DIR);
     }
 
     @Test
@@ -54,33 +59,34 @@ public class BlastTest  {
         File gtoFile = new File("data", "1313.7001.gto");
         Genome gto = new Genome(gtoFile);
         // Create and test a DNA database.
-        File fastaFile = new File(tempDir, "temp.fna");
+        File fastaFile = new File(TEMP_DIR, "temp.fna");
         BlastDB newBlastDb = DnaBlastDB.create(fastaFile, gto);
         assertThat(((DnaBlastDB) newBlastDb).getGeneticCode(), equalTo(11));
         String[] suffixes = new String[] { ".nhr", ".nin", ".nsq" };
         for (String suffix : suffixes) {
-            File testFile = new File(tempDir, "temp.fna" + suffix);
+            File testFile = new File(TEMP_DIR, "temp.fna" + suffix);
             assertThat(testFile.canRead(), equalTo(true));
         }
         BlastDB oldBlastDb = BlastDB.load(fastaFile);
         assertThat(oldBlastDb, instanceOf(DnaBlastDB.class));
         assertThat(((DnaBlastDB) oldBlastDb).getGeneticCode(), equalTo(11));
         // Create and test a protein database.
-        File protFile = new File(tempDir, "temp.faa");
+        File protFile = new File(TEMP_DIR, "temp.faa");
         newBlastDb = ProteinBlastDB.create(protFile, gto);
+        assertThat(newBlastDb, instanceOf(ProteinBlastDB.class));
         suffixes = new String[] { ".phr", ".pin", ".psq" };
         for (String suffix : suffixes) {
-            File testFile = new File(tempDir, "temp.faa" + suffix);
+            File testFile = new File(TEMP_DIR, "temp.faa" + suffix);
             assertThat(testFile.canRead(), equalTo(true));
         }
         oldBlastDb = BlastDB.load(protFile);
         assertThat(oldBlastDb, instanceOf(ProteinBlastDB.class));
         // Verify that updating the fasta file causes a regen.
-        File checkFile = new File(tempDir, "temp.fna.nsq");
+        File checkFile = new File(TEMP_DIR, "temp.fna.nsq");
         Thread.sleep(1000);
         gto.saveDna(fastaFile);
         assertThat(checkFile.lastModified(), lessThan(fastaFile.lastModified()));
-        oldBlastDb = BlastDB.load(fastaFile);
+        BlastDB.load(fastaFile);
         assertThat(checkFile.lastModified(), greaterThanOrEqualTo(fastaFile.lastModified()));
     }
 
@@ -111,11 +117,11 @@ public class BlastTest  {
         File g1Pegs = new File("data", "g1.faa");
         File g1dna = new File("data", "g1.fna");
         File g3dna = new File("data", "g3.fna");
-        File g2Pegs = new File(tempDir, "g2.faa");
-        File g2Contigs = new File(tempDir, "g2.fna");
+        File g2Pegs = new File(TEMP_DIR, "g2.faa");
+        File g2Contigs = new File(TEMP_DIR, "g2.fna");
         BlastDB g2ContigBlast = DnaBlastDB.create(g2Contigs, g2);
         BlastParms parms = new BlastParms().maxE(1e-10).maxPerQuery(5).pctLenOfQuery(50);
-        List<BlastHit> sortTest = new ArrayList<BlastHit>(50);
+        List<BlastHit> sortTest = new ArrayList<>(50);
         try (ProteinInputStream pStream = new ProteinInputStream(g1Pegs)) {
             List<BlastHit> results = pStream.blast(g2ContigBlast, parms);
             assertThat(results.size(), equalTo(3));
@@ -327,8 +333,8 @@ public class BlastTest  {
      */
     @Test
     public void testResultSort() throws IOException {
-        List<BlastHit> results0 = new ArrayList<BlastHit>(15);
-        Map<String, String> qMap = new HashMap<String, String>();
+        List<BlastHit> results0 = new ArrayList<>(15);
+        Map<String, String> qMap = new HashMap<>();
         qMap.put("q1", "qtitle 1");
         qMap.put("q2", "qtitle 2");
         try (LineReader testStream = new LineReader(new File("data", "results.txt"))) {
