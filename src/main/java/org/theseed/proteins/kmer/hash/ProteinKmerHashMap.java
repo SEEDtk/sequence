@@ -89,7 +89,7 @@ public class ProteinKmerHashMap<T> {
     public class Result {
 
         /** MD5 of closest protein */
-        private String md5;
+        private final String md5;
         /** number of kmers in common */
         private int simCount;
         /** jaccard similarity to closest protein */
@@ -179,7 +179,7 @@ public class ProteinKmerHashMap<T> {
      *
      * @param K		kmer size
      */
-    protected void setup(int K) {
+    protected final void setup(int K) {
         this.kmerSize = K;
         try {
             this.md5Engine = new MD5Hex();
@@ -218,7 +218,7 @@ public class ProteinKmerHashMap<T> {
     public static ProteinKmerHashMap<String> load(File inFile, int K, String pCol, String vCol)
             throws IOException {
         // Create the hash map.
-        ProteinKmerHashMap<String> retVal = new ProteinKmerHashMap<String>(K);
+        ProteinKmerHashMap<String> retVal = new ProteinKmerHashMap<>(K);
         // Open the input file.
         log.info("Loading proteins from {} with kmer size {}.", inFile, K);
         try (TabbedLineReader inStream = new TabbedLineReader(inFile)) {
@@ -335,7 +335,7 @@ public class ProteinKmerHashMap<T> {
      */
     private CountMap<String> computeProtHits(ProteinKmers kmers) {
         // This will track the hits for each MD5.
-        CountMap<String> retVal = new CountMap<String>();
+        CountMap<String> retVal = new CountMap<>();
         // Loop through the kmers, counting them.
         for (String kmer : kmers) {
             ProteinEncoding encoding = new ProteinEncoding(kmer);
@@ -375,7 +375,7 @@ public class ProteinKmerHashMap<T> {
         // Get the hit counts.
         CountMap<String> hitCounts = computeProtHits(kmers);
         // Extract the acceptable results.
-        List<Result> retVal = new ArrayList<Result>();
+        List<Result> retVal = new ArrayList<>();
         for (var count : hitCounts.counts()) {
             Result result = new Result(count.getCount(), kCount, count.getKey());
             if (result.getSimValue() >= min)
