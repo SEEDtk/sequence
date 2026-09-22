@@ -1,0 +1,20 @@
+GlutTrnaSynt	x	Glutamyl-tRNA synthetase (EC 6.1.1.17)
+ThreTrnaSynt	x	Threonyl-tRNA synthetase (EC 6.1.1.3)
+IsolTrnaSynt	x	Isoleucyl-tRNA synthetase (EC 6.1.1.5)
+LeucTrnaSynt	x	Leucyl-tRNA synthetase (EC 6.1.1.4)
+TranInitFact2n1	x	Translation initiation factor 2
+HistTrnaSynt	x	Histidyl-tRNA synthetase (EC 6.1.1.21)
+PhenTrnaSyntAlph	x	Phenylalanyl-tRNA synthetase alpha chain (E.C. 6.1.1.20)
+ProtTranSubuSecy	x	Protein translocase subunit SecY
+SeryTrnaSynt	x	Seryl-tRNA synthetase (EC 6.1.1.11)
+SignRecoPartProt	x	Signal recognition particle protein Ffh
+TrnaNMeth3	x	tRNA (guanine(37)-N(1))-methyltransferase (EC 2.1.1.228)
+MethTrnaSynt	x	Methionyl-tRNA synthetase (EC 6.1.1.10)
+GtpBindNuclAcidBind	x	GTP-binding and nucleic acid-binding protein YchF
+ValyTrnaSynt	x	Valyl-tRNA synthetase (EC 6.1.1.9)
+SignRecoPartRece	x	Signal recognition particle receptor FtsY
+AlanTrnaSynt	x	Alanyl-tRNA synthetase (EC 6.1.1.7)
+PhenTrnaSyntBeta	x	Phenylalanyl-tRNA synthetase beta chain (EC 6.1.1.20)
+TyroTrnaSynt	x	Tyrosyl-tRNA synthetase (EC 6.1.1.1)
+AspaTrnaSynt	x	Aspartyl-tRNA synthetase (EC 6.1.1.12)
+DnaGyraSubu	x	DNA gyrase subunit A (EC 5.99.1.3)
