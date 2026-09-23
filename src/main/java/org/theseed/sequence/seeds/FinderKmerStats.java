@@ -1,9 +1,16 @@
 package org.theseed.sequence.seeds;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Stream;
 
 import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
+import org.theseed.p3api.P3CursorConnection;
+import org.theseed.proteins.RoleMap;
 
 /**
  * This object computes similarities (closeness) for FinderKmer batches and outputs distribution statistics about them in 
@@ -15,8 +22,12 @@ import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
 public class FinderKmerStats {
 
     // FIELDS
+    /** logging facility */
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(FinderKmerStats.class);
     /** summary statistics for the closeness */ 
     private SummaryStatistics closeStats;
+    /** batch counter for genome stream processing */
+    private int batchCounter;
 
     /**
      * This enum defines the type of sampling to be performed. DENSE will process every pair of genomes, while RANDOM will
@@ -63,19 +74,17 @@ public class FinderKmerStats {
     }
 
     /**
-     * Construct a FinderKmerStats object for the specified batch.
-     * 
-     * @param batch     FinderKmerBatch to analyze
+     * Construct a FinderKmerStats object.
      */
-    public FinderKmerStats(FinderKmerBatch batch) {
+    public FinderKmerStats() {
         this.closeStats = new SummaryStatistics();
     }
 
     /**
-     * Compute the summary statistics for the current batch of FinderKmers using the specified sampling type.
+     * Compute the summary statistics for a batch of FinderKmers using the specified sampling type.
      *
      * @param batch        the batch of FinderKmers to analyze
-     * @param samplingType  the type of sampling to use (DENSE or RANDOM)
+     * @param samplingType  the type of sampling to use
      * 
      * @return the summary statistics for the closeness of the FinderKmers in the current batch
      */
@@ -85,4 +94,54 @@ public class FinderKmerStats {
         return this.closeStats;
     }
 
+    /**
+     * Compute the summary statistics for the closeness of the genomes in a stream of genome IDs.
+     * 
+     * @param genomeStream  the stream of genome IDs to analyze
+     * @param samplingType  the type of sampling to use
+     * @param batchSize     the size of the batches to use when processing the genome stream
+     * @param roleMap       role definitions to use
+     * 
+     * @return the summary statistics for the closeness of the genomes in the stream of genome IDs
+     * 
+     */
+    public static SummaryStatistics compute(Stream<String> genomeStream, SamplingType samplingType, int batchSize, RoleMap roleMap) {
+        FinderKmerStats stats = new FinderKmerStats();
+        Set<String> genomeSet = new HashSet<>(batchSize * 3);
+        P3CursorConnection p3 = new P3CursorConnection();
+        // Process the genome stream in batches of the specified size.
+        genomeStream.forEach(genomeId -> {
+            genomeSet.add(genomeId);
+            if (genomeSet.size() >= batchSize) {
+                stats.updateStats(roleMap, genomeSet, p3, samplingType);
+                genomeSet.clear();
+            }
+        });
+        // Process the residual batch.
+        if (! genomeSet.isEmpty()) {
+            stats.updateStats(roleMap, genomeSet, p3, samplingType);
+        }
+        return stats.closeStats;
+    }
+
+    /**
+     * Update the summary statistics in this object with data from a new batch of genome IDs.
+     * 
+     * @param roleMap       role definitions to use
+     * @param genomeSet     the set of genome IDs in the new batch
+     * @param p3            the connection to use for database access
+     * @param samplingType  the type of sampling to use
+     */
+    private void updateStats(RoleMap roleMap, Set<String> genomeSet, P3CursorConnection p3, SamplingType samplingType) {
+        FinderKmerBatch batch = new FinderKmerBatch();
+        // We uncheck the IO exception to make it easier to use in streams without having to catch it explicitly.
+        try {
+            batch.loadBatch(roleMap, p3, genomeSet);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        this.batchCounter++;
+        log.info("Processing batch {} of {} genomes", this.batchCounter, genomeSet.size());
+        samplingType.computeStats(this.closeStats, batch);
+    }
 }

@@ -14,6 +14,8 @@ import org.theseed.sequence.ProteinKmers;
 public class FinderKmers {
 
     // FIELDS
+    /** logging facility */
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(FinderKmers.class);
     /** ID of the genome this kmer set belongs to */
     private final String genomeId;
     /** hash of role IDs to protein kmers for this genome */

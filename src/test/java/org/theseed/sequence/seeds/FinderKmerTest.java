@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -126,18 +127,49 @@ public class FinderKmerTest {
         }
 
         // Compute the FinderKmerStats for the batch using both sampling types.
-        FinderKmerStats stats = new FinderKmerStats(batch);
+        FinderKmerStats stats = new FinderKmerStats();
         SummaryStatistics denseStats = stats.compute(batch, FinderKmerStats.SamplingType.DENSE);
         SummaryStatistics randomStats = stats.compute(batch, FinderKmerStats.SamplingType.RANDOM);
-        log.info("Dense min, max, mean, sdev: {}, {}, {}, {}", denseStats.getMin(), denseStats.getMax(), denseStats.getMean(), denseStats.getStandardDeviation());
         assertThat(denseStats.getMax(), greaterThanOrEqualTo(randomStats.getMax()));
         assertThat(denseStats.getMin(), lessThanOrEqualTo(randomStats.getMin()));
-        log.info("Random min, max, mean, sdev: {}, {}, {}, {}", randomStats.getMin(), randomStats.getMax(), randomStats.getMean(), randomStats.getStandardDeviation());
         assertThat(denseStats.getMin(), lessThanOrEqualTo(denseStats.getMean()));
         assertThat(denseStats.getMax(), greaterThanOrEqualTo(denseStats.getMean()));
         assertThat(randomStats.getMin(), lessThanOrEqualTo(randomStats.getMean()));
         assertThat(randomStats.getMax(), greaterThanOrEqualTo(randomStats.getMean()));
-        
+        // Perform a batched run.
+        SummaryStatistics batchedStats = FinderKmerStats.compute(genomeIds.stream(), FinderKmerStats.SamplingType.DENSE, 10, roleMap);
+        assertThat(batchedStats.getMax(), lessThanOrEqualTo(denseStats.getMax()));
+        assertThat(batchedStats.getMin(), greaterThanOrEqualTo(denseStats.getMin()));
+        log.info("Random min, max, mean, sdev: {}, {}, {}, {}", randomStats.getMin(), randomStats.getMax(), randomStats.getMean(), randomStats.getStandardDeviation());
+        log.info("Dense min, max, mean, sdev: {}, {}, {}, {}", denseStats.getMin(), denseStats.getMax(), denseStats.getMean(), denseStats.getStandardDeviation());
+        log.info("Batched run min, max, mean, sdev: {}, {}, {}, {}", batchedStats.getMin(), batchedStats.getMax(), batchedStats.getMean(), batchedStats.getStandardDeviation());
+        // Get the stats for the big set to give us a clue as to the closeness to use for the representative subset.
+        genomeIds = TabbedLineReader.readSet(new File("data", "random.genomes.tbl"), "1");
+        SummaryStatistics bigStats = FinderKmerStats.compute(genomeIds.stream(), FinderKmerStats.SamplingType.DENSE, 100, roleMap);
+        log.info("Big set min, max, mean, sdev: {}, {}, {}, {}", bigStats.getMin(), bigStats.getMax(), bigStats.getMean(), bigStats.getStandardDeviation());
+    }
+
+    /**
+     * Test representative-subset creation in FinderKmerBatch.
+     * 
+     * @throws IOException 
+     */
+    @Test
+    public void testRepresentativeSubset() throws IOException {
+        // Create a stream of genome IDs for testing.
+        Set<String> genomeIdSet = TabbedLineReader.readSet(new File("data", "random.genomes.tbl"), "1");
+        Stream<String> genomeIds = genomeIdSet.stream();
+        // Read in the role map.
+        RoleMap roleMap = RoleMap.load(new File("data", "roles.for.finder"));
+        // Create the representative subset.
+        FinderKmerBatch repSubset = FinderKmerBatch.createRepresentativeSubset(genomeIds, roleMap, 100, 0.6);
+        assertThat(repSubset, not(nullValue(FinderKmerBatch.class)));
+        assertThat(repSubset.genomeIds().size(), greaterThan(0));
+        for (String genomeId : repSubset.genomeIds())
+            assertThat(genomeId, genomeIdSet.contains(genomeId));
+        FinderKmerStats stats = new FinderKmerStats();
+        SummaryStatistics repStats = stats.compute(repSubset, FinderKmerStats.SamplingType.DENSE);
+        assertThat(repStats.getMin(), greaterThan(0.6));
     }
 
 }
