@@ -39,12 +39,70 @@ public class FinderKmerBatch {
     private int seqsInvalid;
     /** number of sequences kept (for logging during load) */
     private int seqsKept;
-    /** batch counter for representative computation */
-    private int batchCount;
-    /** genome counter for representative computation */
-    private int genomeCount;
 
-    // CONSTRUCTOR
+    /** 
+     * This dinky little class keeps track of the progress when computing representative subsets of genomes.
+     */
+    private static class ProgressTracker {
+        /** number of batches processed */
+        private int batchCount;
+        /** number of genomes processed */
+        private int genomeCount;
+
+        /**
+         * Initialize the progress tracker.
+         */
+        protected ProgressTracker() {
+            this.batchCount = 0;
+            this.genomeCount = 0;
+        }
+
+        /**
+         * Record a new batch being processed.
+         * 
+         * @param repsets   an array of FinderKmerBatch objects representing the current representative sets
+         */
+        protected void logNewBatch(FinderKmerBatch[] repsets) {
+            this.batchCount++;
+            this.logProgress(repsets);
+        }
+
+        /**
+         * Log the current progress, including the number of batches and genomes processed.
+         * 
+         * @param repsets   an array of FinderKmerBatch objects representing the current representative sets
+         */
+        protected void logProgress(FinderKmerBatch[] repsets) {
+            if (log.isInfoEnabled()) {
+                // Get the representative set sizes for logging.
+                String repCounts = Arrays.stream(repsets)
+                        .map(x -> Integer.toString(x.finderMap.size()))
+                        .collect(Collectors.joining(", "));
+                // Write our progress.
+                log.info("Processing batch {}. {} genomes processed with repgen sizes {}", this.batchCount, this.genomeCount, repCounts);
+            }
+        }
+
+        /**
+         * @return the number of genomes processed so far
+         */
+        public int getGenomeCount() {
+            return this.genomeCount;
+        }
+
+        /**
+         * Record processing of a batch of genomes.
+         * 
+         * @param size  the number of genomes in the batch
+         */
+        protected void recordGenomes(int size) {
+            this.genomeCount += size;
+        }
+
+    }
+
+    // CONSTRUCTOR AND METHODS
+
     /**
      * Construct an empty FinderKmerBatch object.
      */
@@ -67,20 +125,26 @@ public class FinderKmerBatch {
         this.seqsIn = 0;
         this.seqsInvalid = 0;
         this.seqsKept = 0;
+        // Set up a batch size that should get all instances of each role in one batch. We cap at 500 to keep from overloading
+        // memory.
+        int batchSize = (int) (genomes.size() * 1.3);
+        if (batchSize > 500)
+            batchSize = 500;
         // Loop through the roles and process each one.
         for (Role role : roleMap.objectValues()) {
             rolesIn++;
             String roleId = role.getId();
             String roleName = role.getName();
-            log.info("Processing role #{} {}: {}.", rolesIn, roleId, roleName);
+            log.debug("Processing role #{} {}: {}.", rolesIn, roleId, roleName);
             // Build a filter for this role.
             SolrFilter findRole = SolrFilter.EQ("product", roleName);
             Collection<SolrFilter> criteria = Arrays.asList(findRole);
-            p3.getRecords("feature", P3CursorConnection.MAX_LIMIT, 200, "genome_id", genomes,
+            // Note that we try to load all the genomes in one batch. 
+            p3.getRecords("feature", P3CursorConnection.MAX_LIMIT, batchSize, "genome_id", genomes,
                     "patric_id,genome_id,product,aa_sequence", criteria, x -> this.processRecord(x, role));
-            log.info("Processed {} sequences. Role #{} {} in progress. {} sequences kept.", this.seqsIn, rolesIn, role, this.seqsKept);
+            log.debug("Processed {} sequences. Role #{} {} in progress. {} sequences kept.", this.seqsIn, rolesIn, role, this.seqsKept);
         }
-        log.info("{} sequences read, {} kept, {} invalid, {} roles processed.", this.seqsIn, this.seqsKept, this.seqsInvalid, rolesIn);
+        log.debug("{} sequences read, {} kept, {} invalid, {} roles processed.", this.seqsIn, this.seqsKept, this.seqsInvalid, rolesIn);
     }
 
     /**
@@ -149,59 +213,78 @@ public class FinderKmerBatch {
     }
 
     /**
-     * Create a representative subset of the genomes in a genome ID stream and output them as a new FinderKmerBatch.
+     * This is a convenience method for creating a single representative subset from a stream of genome IDs.
+     * 
+     * @param genomeIds    stream of genome IDs to consider for the representative subset
+     * @param p3           the connection to use for database access
+     * @param roleMap      role definition file for roles to use in selecting proteins
+     * @param batchSize    size of the batches to process
+     * @param closeness    the closeness threshold for selecting representative genomes
+     * 
+     * @return a FinderKmerBatch object containing the representative genomes for the specified closeness threshold
+     */
+    public static FinderKmerBatch createRepresentativeSubset(Stream<String> genomeIds, P3CursorConnection p3, RoleMap roleMap, 
+            int batchSize, double closeness) {
+        FinderKmerBatch[] subsets = createRepresentativeSubsets(genomeIds, p3, roleMap, batchSize, closeness);
+        return subsets[0];
+    }
+
+    /**
+     * Create one or more representative subsets of the genomes in a genome ID stream and output them as a new FinderKmerBatch.
      * The representatives have the property that no two are within the specified closeness threshold of each other.
      * The incoming stream of genome IDs is processed in batches to improve performance when retrieving from the
      * database.
      * 
      * @param genomeIds    stream of genome IDs to consider for the representative subset
+     * @param p3           the connection to use for database access
      * @param roleMap      role definition file for roles to use in selecting proteins
      * @param batchSize    size of the batches to process
-     * @param closeness    the closeness threshold for selecting representative genomes
+     * @param closeness    the closeness thresholds for selecting representative genomes
      *
-     * @return a new FinderKmerBatch containing the representative genomes
+     * @return an array of FinderKmerBatch objects, each containing the representative genomes for the corresponding closeness threshold
      */
-    public static FinderKmerBatch createRepresentativeSubset(Stream<String> genomeIds, RoleMap roleMap, int batchSize, double closeness) {
-        // We will build the representative set in here.
-        FinderKmerBatch retVal = new FinderKmerBatch();
+    public static FinderKmerBatch[] createRepresentativeSubsets(Stream<String> genomeIds, P3CursorConnection p3, RoleMap roleMap, 
+            int batchSize, double... closeness) {
+        // We will build the representative sets in here.
+        FinderKmerBatch[] retVal = new FinderKmerBatch[closeness.length];
+        Arrays.setAll(retVal, i -> new FinderKmerBatch());
         // We process the genomes a batch at a time. After a batch is encountered, we check for representatives and then
         // build the next one.
         Set<String> genomeBatch = new HashSet<>(batchSize * 3);
-        // Connect to the database.
-        P3CursorConnection p3 = new P3CursorConnection();
         // This counts the batches and genomes.
-        retVal.batchCount = 0;
-        retVal.genomeCount = 0;
+        ProgressTracker progress = new ProgressTracker();
         // Now process the stream.
         genomeIds.forEach(genomeId -> {
-            retVal.genomeCount++;
             genomeBatch.add(genomeId);
             if (genomeBatch.size() >= batchSize) {
-                retVal.batchCount++;
-                log.info("Processing batch number {} with {} genomes.", retVal.batchCount, genomeBatch.size());
-                retVal.processBatch(genomeBatch, roleMap, p3, closeness);
+                progress.logNewBatch(retVal);
+                for (int i = 0; i < retVal.length; i++)
+                    retVal[i].processBatch(genomeBatch, roleMap, p3, closeness[i], progress);
+                progress.recordGenomes(genomeBatch.size());
                 genomeBatch.clear();
             }
         });
         // Process any remaining genomes in the last batch.
         if (! genomeBatch.isEmpty()) {
-            log.info("Processing final batch with {} genomes.", genomeBatch.size());
-            retVal.processBatch(genomeBatch, roleMap, p3, closeness);
-            retVal.batchCount++;
+            progress.logNewBatch(retVal);
+            for (int i = 0; i < retVal.length; i++)
+                retVal[i].processBatch(genomeBatch, roleMap, p3, closeness[i], progress);
+            progress.recordGenomes(genomeBatch.size());
         }
-        log.info("Processed a total of {} batches with {} representatives found out of {} genomes.", retVal.batchCount, retVal.finderMap.size(), retVal.genomeCount);
+        log.info("Processing complete: {} repgen sets created from {} genomes.", retVal.length, progress.getGenomeCount());
         return retVal;
     }
 
     /**
      * This method is used to process a batch of genomes and update the representative set.
      *
-     * @param genomeBatch  the set of genome IDs in the current batch
-     * @param roleMap      role definition file for roles to use in selecting proteins
-     * @param p3           connection to the BV-BRC database
-     * @param closeness    the closeness threshold for selecting representative genomes
+     * @param genomeBatch   the set of genome IDs in the current batch
+     * @param roleMap       role definition file for roles to use in selecting proteins
+     * @param p3            connection to the BV-BRC database
+     * @param closeness     the closeness threshold for selecting representative genomes
+     * @param progress      the progress tracker for monitoring the repgen creation
      */
-    private void processBatch(Set<String> genomeBatch, RoleMap roleMap, P3CursorConnection p3, double closeness) {
+    private void processBatch(Set<String> genomeBatch, RoleMap roleMap, P3CursorConnection p3, double closeness, ProgressTracker progress) {
         // Create a new FinderKmerBatch from the incoming genomes.
         FinderKmerBatch newBatch = new FinderKmerBatch();
         try {
@@ -219,7 +302,7 @@ public class FinderKmerBatch {
             while (! isClose && newIter.hasNext()) {
                 FinderKmers repKmers = newIter.next();
                 double repCloseness = repKmers.computeCloseness(genome);
-                isClose = (repCloseness <= closeness);
+                isClose = (repCloseness > closeness);
             }
             if (! isClose) {
                 this.finderMap.put(genome.getGenomeId(), genome);

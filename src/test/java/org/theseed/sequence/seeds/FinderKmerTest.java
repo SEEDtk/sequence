@@ -2,17 +2,18 @@ package org.theseed.sequence.seeds;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 
-import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.lessThan;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.Matchers.not;
@@ -127,9 +128,8 @@ public class FinderKmerTest {
         }
 
         // Compute the FinderKmerStats for the batch using both sampling types.
-        FinderKmerStats stats = new FinderKmerStats();
-        SummaryStatistics denseStats = stats.compute(batch, FinderKmerStats.SamplingType.DENSE);
-        SummaryStatistics randomStats = stats.compute(batch, FinderKmerStats.SamplingType.RANDOM);
+        FinderKmerStats denseStats = FinderKmerStats.compute(batch, FinderKmerStats.SamplingType.DENSE);
+        FinderKmerStats randomStats = FinderKmerStats.compute(batch, FinderKmerStats.SamplingType.RANDOM);
         assertThat(denseStats.getMax(), greaterThanOrEqualTo(randomStats.getMax()));
         assertThat(denseStats.getMin(), lessThanOrEqualTo(randomStats.getMin()));
         assertThat(denseStats.getMin(), lessThanOrEqualTo(denseStats.getMean()));
@@ -137,16 +137,35 @@ public class FinderKmerTest {
         assertThat(randomStats.getMin(), lessThanOrEqualTo(randomStats.getMean()));
         assertThat(randomStats.getMax(), greaterThanOrEqualTo(randomStats.getMean()));
         // Perform a batched run.
-        SummaryStatistics batchedStats = FinderKmerStats.compute(genomeIds.stream(), FinderKmerStats.SamplingType.DENSE, 10, roleMap);
+        FinderKmerStats batchedStats = FinderKmerStats.compute(genomeIds.stream(), FinderKmerStats.SamplingType.DENSE, 10, p3,roleMap);
         assertThat(batchedStats.getMax(), lessThanOrEqualTo(denseStats.getMax()));
         assertThat(batchedStats.getMin(), greaterThanOrEqualTo(denseStats.getMin()));
-        log.info("Random min, max, mean, sdev: {}, {}, {}, {}", randomStats.getMin(), randomStats.getMax(), randomStats.getMean(), randomStats.getStandardDeviation());
-        log.info("Dense min, max, mean, sdev: {}, {}, {}, {}", denseStats.getMin(), denseStats.getMax(), denseStats.getMean(), denseStats.getStandardDeviation());
-        log.info("Batched run min, max, mean, sdev: {}, {}, {}, {}", batchedStats.getMin(), batchedStats.getMax(), batchedStats.getMean(), batchedStats.getStandardDeviation());
+        log.info("Random min, max, mean, sdev, skew: {}, {}, {}, {}, {}", randomStats.getMin(), randomStats.getMax(), randomStats.getMean(), randomStats.getStdDev(), randomStats.getSkewness());
+        log.info("Dense min, max, mean, sdev, skew: {}, {}, {}, {}, {}", denseStats.getMin(), denseStats.getMax(), denseStats.getMean(), denseStats.getStdDev(), denseStats.getSkewness());
+        log.info("Batched run min, max, mean, sdev, skew: {}, {}, {}, {}, {}", batchedStats.getMin(), batchedStats.getMax(), batchedStats.getMean(), batchedStats.getStdDev(), batchedStats.getSkewness());
         // Get the stats for the big set to give us a clue as to the closeness to use for the representative subset.
         genomeIds = TabbedLineReader.readSet(new File("data", "random.genomes.tbl"), "1");
-        SummaryStatistics bigStats = FinderKmerStats.compute(genomeIds.stream(), FinderKmerStats.SamplingType.DENSE, 100, roleMap);
-        log.info("Big set min, max, mean, sdev: {}, {}, {}, {}", bigStats.getMin(), bigStats.getMax(), bigStats.getMean(), bigStats.getStandardDeviation());
+        FinderKmerStats bigStats = FinderKmerStats.compute(genomeIds.stream(), FinderKmerStats.SamplingType.DENSE, 100, p3, roleMap);
+        log.info("Big set min, max, mean, sdev, skew: {}, {}, {}, {}, {}", bigStats.getMin(), bigStats.getMax(), bigStats.getMean(), bigStats.getStdDev(), bigStats.getSkewness());
+    }
+
+    /**
+     * Test the FinderKmerStats computation on streams.
+     * 
+     * @throws IOException
+     */
+    @Test
+    public void testFinderKmerStatsStreams() throws IOException {
+        P3CursorConnection p3 = new P3CursorConnection();
+        Set<String> genomeIdSet = TabbedLineReader.readSet(new File("data", "random.genomes.tbl"), "1");
+        Stream<String> genomeIds = genomeIdSet.stream();
+        RoleMap roleMap = RoleMap.load(new File("data", "roles.for.finder"));
+        FinderKmerStats stats = FinderKmerStats.compute(genomeIds, FinderKmerStats.SamplingType.DENSE, 200, p3, roleMap);
+        assertThat(stats.getMin(), lessThanOrEqualTo(stats.getMax()));
+        assertThat(stats.getMean(), greaterThanOrEqualTo(stats.getMin()));
+        assertThat(stats.getMean(), lessThanOrEqualTo(stats.getMax()));
+        assertThat(stats.getStdDev(), greaterThanOrEqualTo(0.0));
+        log.info("Stream min, max, mean, sdev, skew: {}, {}, {}, {}, {}", stats.getMin(), stats.getMax(), stats.getMean(), stats.getStdDev(), stats.getSkewness());
     }
 
     /**
@@ -156,20 +175,76 @@ public class FinderKmerTest {
      */
     @Test
     public void testRepresentativeSubset() throws IOException {
+        P3CursorConnection p3 = new P3CursorConnection();
         // Create a stream of genome IDs for testing.
         Set<String> genomeIdSet = TabbedLineReader.readSet(new File("data", "random.genomes.tbl"), "1");
         Stream<String> genomeIds = genomeIdSet.stream();
         // Read in the role map.
         RoleMap roleMap = RoleMap.load(new File("data", "roles.for.finder"));
         // Create the representative subset.
-        FinderKmerBatch repSubset = FinderKmerBatch.createRepresentativeSubset(genomeIds, roleMap, 100, 0.6);
+        FinderKmerBatch repSubset = FinderKmerBatch.createRepresentativeSubset(genomeIds, p3, roleMap, 100, 0.6);
         assertThat(repSubset, not(nullValue(FinderKmerBatch.class)));
         assertThat(repSubset.genomeIds().size(), greaterThan(0));
         for (String genomeId : repSubset.genomeIds())
             assertThat(genomeId, genomeIdSet.contains(genomeId));
-        FinderKmerStats stats = new FinderKmerStats();
-        SummaryStatistics repStats = stats.compute(repSubset, FinderKmerStats.SamplingType.DENSE);
-        assertThat(repStats.getMin(), greaterThan(0.6));
+        FinderKmerStats  repStats = FinderKmerStats.compute(repSubset, FinderKmerStats.SamplingType.DENSE);
+        assertThat(repStats.getMax(), lessThan(0.6));
+        // Build a batch of the genomes not in the representative set. This will take a lot of time and memory.
+        Set<String> nonRepGenomeIds = new HashSet<>(genomeIdSet);
+        nonRepGenomeIds.removeAll(repSubset.genomeIds());
+        FinderKmerBatch nonRepBatch = new FinderKmerBatch();
+        nonRepBatch.loadBatch(roleMap, p3, nonRepGenomeIds);
+        // Insure every genome ID in the non-representative set is close to at least one representative.
+        for (String genomeId : nonRepGenomeIds) {
+            FinderKmers nonRepKmers = nonRepBatch.getFinderKmers(genomeId);
+            boolean found = repSubset.getFinders().stream().anyMatch(finder -> finder.computeCloseness(nonRepKmers) > 0.6);
+            assertThat("Non-representative genome " + genomeId + " is not close to any representative", found, is(true));
+        }
+        log.info("All representative-genome tests passed.");
+        log.info("Max closeness for repStats = {}. {} reps out of {} genomes.", repStats.getMax(), repSubset.size(), genomeIdSet.size());
+    }
+
+    /**
+     * Test multiple representative-subset creation in FinderKmerBatch.
+     */
+    @Test
+    public void testMultipleRepresentativeSubsets() throws IOException {
+        P3CursorConnection p3 = new P3CursorConnection();
+        // Create a stream of genome IDs for testing.
+        Set<String> genomeIdSet = TabbedLineReader.readSet(new File("data", "random.genomes.tbl"), "1");
+        Stream<String> genomeIds = genomeIdSet.stream();
+        // Read in the role map.
+        RoleMap roleMap = RoleMap.load(new File("data", "roles.for.finder"));
+        // Create multiple representative subsets.
+        double closenessThresholds[] = {0.6, 0.8, 0.9};
+        FinderKmerBatch[] repSubsets = FinderKmerBatch.createRepresentativeSubsets(genomeIds, p3, roleMap, 100, closenessThresholds);
+        assertThat(repSubsets, not(nullValue(FinderKmerBatch[].class)));
+        assertThat(repSubsets.length, is(3));
+        // Insure every representative subset contains only valid genome IDs.
+        for (FinderKmerBatch repSubset : repSubsets) {
+            assertThat(repSubset.genomeIds().size(), greaterThan(0));
+            for (String genomeId : repSubset.genomeIds())
+                assertThat(genomeId, genomeIdSet.contains(genomeId));
+        }
+        // Insure that each subset is smaller than the next one.
+        for (int i = 0; i < repSubsets.length - 1; i++)
+            assertThat(Integer.toString(i), repSubsets[i].size(), lessThanOrEqualTo(repSubsets[i + 1].size()));
+        // Verify that each representative set is indeed representative, i.e., no two genomes within the set are too close.
+        for (int i = 0; i < repSubsets.length; i++) {
+            FinderKmerBatch repSubset = repSubsets[i];
+            double closenessThreshold = closenessThresholds[i];
+            for (String genomeId1 : repSubset.genomeIds()) {
+                FinderKmers kmer1 = repSubset.getFinderKmers(genomeId1);
+                for (String genomeId2 : repSubset.genomeIds()) {
+                    if (! genomeId1.equals(genomeId2)) {
+                        FinderKmers kmer2 = repSubset.getFinderKmers(genomeId2);
+                        assertThat("Genomes " + genomeId1 + " and " + genomeId2 + " are too close in rep subset " + i, 
+                                kmer1.computeCloseness(kmer2), lessThanOrEqualTo(closenessThreshold));
+                    }
+                }
+            }
+        }
+        log.info("All multiple representative-subset tests passed.");
     }
 
 }

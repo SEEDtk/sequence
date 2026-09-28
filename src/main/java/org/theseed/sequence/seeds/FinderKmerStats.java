@@ -1,97 +1,54 @@
 package org.theseed.sequence.seeds;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import java.util.stream.Stream;
 
-import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
+import org.apache.commons.statistics.descriptive.DoubleStatistics;
+import org.apache.commons.statistics.descriptive.Statistic;
 import org.theseed.p3api.P3CursorConnection;
 import org.theseed.proteins.RoleMap;
 
 /**
  * This object computes similarities (closeness) for FinderKmer batches and outputs distribution statistics about them in 
- * the form of a SummaryStatistics object. The client can opt to do a dense analysis of every pair of genomes or a random sampling for
+ * the form of a DoubleStatistics object. The client can opt to do a dense analysis of every pair of genomes or a random sampling for
  * efficiency.
  * 
  * FinderKmerStats
  */
-public class FinderKmerStats {
+public class FinderKmerStats extends FinderKmerConsumer {
 
     // FIELDS
-    /** logging facility */
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(FinderKmerStats.class);
     /** summary statistics for the closeness */ 
-    private SummaryStatistics closeStats;
-    /** batch counter for genome stream processing */
-    private int batchCounter;
+    private final DoubleStatistics closeStats;
 
     /**
-     * This enum defines the type of sampling to be performed. DENSE will process every pair of genomes, while RANDOM will
-     * process pairs in a ring. Thus, DENSE is quadratic with respect to the batch size, while RANDOM is linear.
-     */
-    public enum SamplingType {
-        /** process every possible pair of genomes */
-        DENSE {
-            @Override
-            protected void computeStats(SummaryStatistics stats, FinderKmerBatch batch) {
-                List<FinderKmers> finders = batch.getFinders();
-                for (int i = 0; i < finders.size(); i++) {
-                    for (int j = i + 1; j < finders.size(); j++) {
-                        double closeness = finders.get(i).computeCloseness(finders.get(j));
-                        stats.addValue(closeness);
-                    }
-                }
-            }
-        },
-        /** process pairs in a ring (linear with respect to batch size) */
-        RANDOM {
-            @Override
-            protected void computeStats(SummaryStatistics stats, FinderKmerBatch batch) {
-                // Shuffle the kmer objects to randomize the ring.
-                List<FinderKmers> finders = batch.getFinders();
-                Collections.shuffle(finders);
-                for (int i = 1; i < finders.size(); i++) {
-                    int j = i - 1;
-                    double closeness = finders.get(i).computeCloseness(finders.get(j));
-                    stats.addValue(closeness);
-                }
-                double closeness = finders.get(0).computeCloseness(finders.get(finders.size() - 1));
-                stats.addValue(closeness);
-            }
-        };
-
-        /**
-         * Compute the summary statistics for the given list of FinderKmers.
-         *
-         * @param stats       the summary statistics object to populate with closeness values
-         * @param batch       the batch of FinderKmers to analyze
-         */
-        protected abstract void computeStats(SummaryStatistics stats, FinderKmerBatch batch);
-    }
-
-    /**
-     * Construct a FinderKmerStats object.
+     * Construct a FinderKmerStats object. This is a consumer whose reason is to compute statistics.
      */
     public FinderKmerStats() {
-        this.closeStats = new SummaryStatistics();
+        super("statistics");
+        // Initialize the statistics object.
+        this.closeStats = DoubleStatistics.of(
+                    Statistic.MIN,
+                    Statistic.MAX,
+                    Statistic.MEAN,
+                    Statistic.STANDARD_DEVIATION,
+                    Statistic.SKEWNESS
+                );
     }
 
     /**
-     * Compute the summary statistics for a batch of FinderKmers using the specified sampling type.
+     * Compute the statistics for a batch of FinderKmers using the specified sampling type. The
+     * statistics can be retrieved from this object.
      *
      * @param batch        the batch of FinderKmers to analyze
      * @param samplingType  the type of sampling to use
      * 
-     * @return the summary statistics for the closeness of the FinderKmers in the current batch
+     * @return a FinderKmerStats object for the closeness of the FinderKmers in the current batch
      */
-    public SummaryStatistics compute(FinderKmerBatch batch, SamplingType samplingType) {
-        this.closeStats = new SummaryStatistics();
-        samplingType.computeStats(this.closeStats, batch);
-        return this.closeStats;
+    public static FinderKmerStats compute(FinderKmerBatch batch, SamplingType samplingType) {
+        FinderKmerStats retVal = new FinderKmerStats();
+        // Compute the statistics for the current batch using the specified sampling type.
+        samplingType.processBatch(batch, retVal.closeStats::accept);
+        return retVal;
     }
 
     /**
@@ -100,48 +57,52 @@ public class FinderKmerStats {
      * @param genomeStream  the stream of genome IDs to analyze
      * @param samplingType  the type of sampling to use
      * @param batchSize     the size of the batches to use when processing the genome stream
+     * @param p3            the connection to use for database access
      * @param roleMap       role definitions to use
      * 
-     * @return the summary statistics for the closeness of the genomes in the stream of genome IDs
+     * @return a FinderKmerStats object containing the computed statistics for the genome stream
      * 
      */
-    public static SummaryStatistics compute(Stream<String> genomeStream, SamplingType samplingType, int batchSize, RoleMap roleMap) {
-        FinderKmerStats stats = new FinderKmerStats();
-        Set<String> genomeSet = new HashSet<>(batchSize * 3);
-        P3CursorConnection p3 = new P3CursorConnection();
-        // Process the genome stream in batches of the specified size.
-        genomeStream.forEach(genomeId -> {
-            genomeSet.add(genomeId);
-            if (genomeSet.size() >= batchSize) {
-                stats.updateStats(roleMap, genomeSet, p3, samplingType);
-                genomeSet.clear();
-            }
-        });
-        // Process the residual batch.
-        if (! genomeSet.isEmpty()) {
-            stats.updateStats(roleMap, genomeSet, p3, samplingType);
-        }
-        return stats.closeStats;
+    public static FinderKmerStats compute(Stream<String> genomeStream, SamplingType samplingType, int batchSize, P3CursorConnection p3,
+            RoleMap roleMap) {
+        FinderKmerStats retVal = new FinderKmerStats();
+        process(genomeStream, samplingType, batchSize, p3, roleMap, x -> retVal.closeStats.accept(x), "statistics");
+        return retVal;
     }
 
     /**
-     * Update the summary statistics in this object with data from a new batch of genome IDs.
-     * 
-     * @param roleMap       role definitions to use
-     * @param genomeSet     the set of genome IDs in the new batch
-     * @param p3            the connection to use for database access
-     * @param samplingType  the type of sampling to use
+     * @return the minimum closeness
      */
-    private void updateStats(RoleMap roleMap, Set<String> genomeSet, P3CursorConnection p3, SamplingType samplingType) {
-        FinderKmerBatch batch = new FinderKmerBatch();
-        // We uncheck the IO exception to make it easier to use in streams without having to catch it explicitly.
-        try {
-            batch.loadBatch(roleMap, p3, genomeSet);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-        this.batchCounter++;
-        log.info("Processing batch {} of {} genomes", this.batchCounter, genomeSet.size());
-        samplingType.computeStats(this.closeStats, batch);
+    public double getMin() {
+        return this.closeStats.getAsDouble(Statistic.MIN);
     }
+    
+    /**
+     * @return the maximum closeness
+     */
+    public double getMax() {
+        return this.closeStats.getAsDouble(Statistic.MAX);
+    }
+
+    /**
+     * @return the mean closeness
+     */
+    public double getMean() {
+        return this.closeStats.getAsDouble(Statistic.MEAN);
+    }
+    
+    /**
+     * @return the standard deviation of the closeness
+     */
+    public double getStdDev() {
+        return this.closeStats.getAsDouble(Statistic.STANDARD_DEVIATION);
+    }
+
+    /**
+     * @return the skewness of the closeness
+     */
+    public double getSkewness() {
+        return this.closeStats.getAsDouble(Statistic.SKEWNESS);
+    }
+
 }
