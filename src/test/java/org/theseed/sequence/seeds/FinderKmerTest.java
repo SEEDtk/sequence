@@ -216,8 +216,9 @@ public class FinderKmerTest {
         // Read in the role map.
         RoleMap roleMap = RoleMap.load(new File("data", "roles.for.finder"));
         // Create multiple representative subsets.
+        FinderKmerStats stats = new FinderKmerStats();
         double closenessThresholds[] = {0.6, 0.8, 0.9};
-        FinderKmerBatch[] repSubsets = FinderKmerBatch.createRepresentativeSubsets(genomeIds, p3, roleMap, 100, closenessThresholds);
+        FinderKmerBatch[] repSubsets = FinderKmerBatch.createRepresentativeSubsets(genomeIds, p3, roleMap, 100, stats, closenessThresholds);
         assertThat(repSubsets, not(nullValue(FinderKmerBatch[].class)));
         assertThat(repSubsets.length, is(3));
         // Insure every representative subset contains only valid genome IDs.
@@ -244,7 +245,23 @@ public class FinderKmerTest {
                 }
             }
         }
+        // Make sure we have statistics.
+        assertThat(stats, not(nullValue(FinderKmerStats.class)));
+        assertThat(stats.getMean(), greaterThan(0.0));
+        assertThat(stats.getMin(), lessThanOrEqualTo(stats.getMax()));
+        assertThat(stats.getStdDev(), greaterThanOrEqualTo(0.0));
+        assertThat(stats.getSkewness(), not(Double.NaN));
+        // Now verify the statistics.
+        genomeIds = genomeIdSet.stream();
+        FinderKmerStats testStats = FinderKmerStats.compute(genomeIds, FinderKmerStats.SamplingType.DENSE, 100, p3, roleMap);
+        assertThat(testStats, not(nullValue(FinderKmerStats.class)));
+        assertThat(testStats.getMean(), closeTo(stats.getMean(), 1e-5));
+        assertThat(testStats.getMin(), closeTo(stats.getMin(), 1e-5));
+        assertThat(testStats.getMax(), closeTo(stats.getMax(), 1e-5));
+        assertThat(testStats.getStdDev(), closeTo(stats.getStdDev(), 1e-5));
+        assertThat(testStats.getSkewness(), closeTo(stats.getSkewness(), 1e-5));
         log.info("All multiple representative-subset tests passed.");
+
     }
 
 }

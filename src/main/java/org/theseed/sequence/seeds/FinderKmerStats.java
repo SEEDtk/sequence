@@ -105,4 +105,14 @@ public class FinderKmerStats extends FinderKmerConsumer {
         return this.closeStats.getAsDouble(Statistic.SKEWNESS);
     }
 
+    /**
+     * Update the statistics for the given batch using the specified sampling type.
+     * 
+     * @param batch         the batch of FinderKmers to analyze
+     * @param samplingType  the type of sampling to use
+     */
+    public void update(FinderKmerBatch batch, SamplingType samplingType) {
+        samplingType.processBatch(batch, this.closeStats::accept);
+    }
+
 }
