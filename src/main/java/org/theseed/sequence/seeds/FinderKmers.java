@@ -39,6 +39,15 @@ public class FinderKmers {
     }
 
     /**
+     * @return the FinderKmers object for the specified role, or null if it does not exist
+     * 
+     * @param roleId
+     */
+    public ProteinKmers getRoleKmers(String roleId) {
+        return this.roleKmers.get(roleId);
+    }
+    
+    /**
      * Add the specified protein sequence to the kmer map. On very rare occasions, we will get two
      * sequences for the same role, in which case either the original protein has split into two pieces,
      * or we have two very similar proteins for the same role. In either case, we merge the kmers.

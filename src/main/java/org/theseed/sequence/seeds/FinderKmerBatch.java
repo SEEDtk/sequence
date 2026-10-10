@@ -26,7 +26,7 @@ import com.github.cliftonlabs.json_simple.JsonObject;
  * and perform batch operations on their finder-kmers. More importantly, it loads finder-kmers from
  * the BV-BRC database.
  */
-public class FinderKmerBatch {
+public class FinderKmerBatch implements Iterable<FinderKmers> {
 
     // FIELDS
     /** logging facility */
@@ -43,7 +43,7 @@ public class FinderKmerBatch {
     /** 
      * This dinky little class keeps track of the progress when computing representative subsets of genomes.
      */
-    private static class ProgressTracker {
+    public static class ProgressTracker {
         /** number of batches processed */
         private int batchCount;
         /** number of genomes processed */
@@ -54,7 +54,14 @@ public class FinderKmerBatch {
         /**
          * Initialize the progress tracker.
          */
-        protected ProgressTracker() {
+        public ProgressTracker() {
+            this.reset();
+        }
+
+        /** 
+         * Reset the progress tracker to its initial state.
+         */ 
+        final public void reset() {
             this.batchCount = 0;
             this.genomeCount = 0;
             this.stats = null;
@@ -65,7 +72,7 @@ public class FinderKmerBatch {
          * 
          * @param stats   the statistics tracker to store
          */
-        protected void setStats(FinderKmerStats stats) {
+        public void setStats(FinderKmerStats stats) {
             this.stats = stats;
         }
 
@@ -292,25 +299,48 @@ public class FinderKmerBatch {
         return retVal;
     }
 
-    private static void processBatch(FinderKmerBatch[] retVal, Set<String> genomeBatch, RoleMap roleMap,
+    /**
+     * Process a new set of genomes and update the representative sets accordingly.
+     * 
+     * @param repgens       the array of representative genome sets to update with the new batch
+     * @param genomeBatch   the set of genome IDs to process
+     * @param roleMap       the role map used to analyze the genomes
+     * @param p3            the P3 cursor connection for accessing the database
+     * @param closeness     the array of closeness thresholds corresponding to each representative set
+     * @param progress      the progress tracker for monitoring batch processing
+     */
+    private static void processBatch(FinderKmerBatch[] repgens, Set<String> genomeBatch, RoleMap roleMap,
             P3CursorConnection p3, double[] closeness, ProgressTracker progress) {
-        // Log the start of a new batch.
-        progress.logNewBatch(retVal);
         // Create a new FinderKmerBatch from the incoming genomes.
-        FinderKmerBatch newBatch = new FinderKmerBatch();
+        FinderKmerBatch newBatch = new FinderKmerBatch();    
         try {
             newBatch.loadBatch(roleMap, p3, genomeBatch);
         } catch (IOException e) {
             // We uncheck the IO exception so we can use this method in streams.
             throw new UncheckedIOException(e);
         }
-        // Process each FinderKmerBatch in the retVal array with the new batch.
-        for (int i = 0; i < retVal.length; i++)
-            retVal[i].processBatch(newBatch, closeness[i]);
+        // Use the newly-loaded batch to update the representative sets.
+        newBatch.updateRepgens(repgens, closeness, progress);
+    }
+
+    /**
+     * Process this batch of genomes against a representative genome sets being built.
+     * 
+     * @param repgens       the array of representative genome sets to update with this batch
+     * @param closeness     the array of closeness thresholds corresponding to each representative set
+     * @param progress      the progress tracker for monitoring batch processing
+     */
+    public void updateRepgens(FinderKmerBatch[] repgens, double[] closeness,
+            ProgressTracker progress) {
+        // Log the start of a new batch.
+        progress.logNewBatch(repgens);
+        // Process each FinderKmerBatch in the repgen array with the new batch.
+        for (int i = 0; i < repgens.length; i++)
+            repgens[i].processBatch(this, closeness[i]);
         // Update the statistics for this batch.
-        progress.updateStats(newBatch);
+        progress.updateStats(this);
         // Record the number of genomes processed in this batch.
-        progress.recordGenomes(genomeBatch.size());
+        progress.recordGenomes(this.size());
     }
 
     /**
@@ -335,6 +365,18 @@ public class FinderKmerBatch {
                 this.finderMap.put(genome.getGenomeId(), genome);
             }
         }
+    }
+
+    /**
+     * Erase this batch of genomes, effectively clearing the object.
+     */
+    public void clear() {
+        this.finderMap.clear();
+    }
+
+    @Override
+    public Iterator<FinderKmers> iterator() {
+        return this.finderMap.values().iterator();
     }
 
 }
