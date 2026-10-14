@@ -2,8 +2,10 @@ package org.theseed.sequence.seeds;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -57,6 +59,11 @@ public class FinderKmerTest {
                 finder.addProteinSequence(seq.getComment(), seq.getSequence());
             }
         }
+        // Verify the role set.
+        Set<String> roles = finder1.getRoles();
+        assertThat(roles, not(nullValue()));
+        assertThat(roles.isEmpty(), equalTo(false));
+        assertThat(roles.size(), equalTo(finder1.roleCount()));
         // At this point, we have finder-kmer objects for three genomes. Check the distances.
         double dist11 = finder1.computeDistance(finder1);
         double dist12 = finder1.computeDistance(finder2);
@@ -72,6 +79,18 @@ public class FinderKmerTest {
         assertThat(dist12 + dist23, greaterThan(dist13));
         double dist21 = finder2.computeDistance(finder1);
         assertThat(dist21, equalTo(dist12));
+        // Make an identical copy of finder1.
+        FinderKmers finder1Copy = new FinderKmers("1169293.3");
+        try (FastaInputStream fastaStream = new FastaInputStream(new File("data", "sample.fasta"))) {
+            for (Sequence seq : fastaStream) {
+                String genome_id = Feature.genomeOf(seq.getLabel());
+                if (genome_id.equals("1169293.3"))
+                    finder1Copy.addProteinSequence(seq.getComment(), seq.getSequence());
+            }
+        }
+        // Test the equal operator.
+        assertThat(finder1.equals(finder1Copy), equalTo(true));
+        assertThat(finder1.equals(finder2), equalTo(false));
     }
 
     @Test
@@ -147,6 +166,43 @@ public class FinderKmerTest {
         genomeIds = TabbedLineReader.readSet(new File("data", "random.genomes.tbl"), "1");
         FinderKmerStats bigStats = FinderKmerStats.compute(genomeIds.stream(), FinderKmerStats.SamplingType.DENSE, 100, p3, roleMap);
         log.info("Big set min, max, mean, sdev, skew: {}, {}, {}, {}, {}", bigStats.getMin(), bigStats.getMax(), bigStats.getMean(), bigStats.getStdDev(), bigStats.getSkewness());
+    }
+
+    /**
+     * Test saving and loading a FinderKmerBatch object.
+     * @throws IOException
+     */
+    @Test
+    public void testSaveLoad() throws IOException {
+        P3CursorConnection p3 = new P3CursorConnection();
+        Set<String> genomeIdSet = TabbedLineReader.readSet(new File("data", "random.genomes.tbl"), "1");
+        RoleMap roleMap = RoleMap.load(new File("data", "roles.for.finder"));
+        FinderKmerBatch batch = new FinderKmerBatch();
+        batch.loadBatch(roleMap, p3, genomeIdSet);
+        File tempFile = File.createTempFile("finderKmerBatch", ".tbl");
+        try (PrintWriter outWriter = new PrintWriter(tempFile)) {
+            // Save the file header.
+            List<String> roleIdList = FinderKmerBatch.createHeader(roleMap, outWriter);
+            // Save the batch data.
+            batch.write(roleIdList, outWriter);
+        }
+        log.info("Saved batch to temporary file: {}", tempFile);
+        FinderKmerBatch batchCopy = new FinderKmerBatch();
+        try (TabbedLineReader reader = new TabbedLineReader(tempFile)) {
+            List<String> roleIdList = FinderKmerBatch.loadHeader(reader);
+            int batches = 0;
+            while (reader.hasNext()) {
+                batchCopy.load(roleIdList, 20, reader);
+                batches++;
+            }
+            log.info("Loaded {} batches from temporary file {}", batches, tempFile);
+        }
+        assertThat(batchCopy.size(), equalTo(batch.size()));
+        for (String genomeId : batch.genomeIds()) {
+            FinderKmers finder = batch.getFinderKmers(genomeId);
+            FinderKmers finderCopy = batchCopy.getFinderKmers(genomeId);
+            assertThat(genomeId, finderCopy, equalTo(finder));
+        }
     }
 
     /**

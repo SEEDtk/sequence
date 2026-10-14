@@ -1,6 +1,7 @@
 package org.theseed.sequence.seeds;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 
 import org.theseed.sequence.ProteinKmers;
@@ -130,4 +131,31 @@ public class FinderKmers {
         return this.roleKmers.size();
     }
 
+    /**    (non-Javadoc)
+     * @return the set of roles in this object
+     */
+    public Set<String> getRoles() {
+        return this.roleKmers.keySet();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null || getClass() != obj.getClass())
+            return false;
+        FinderKmers other = (FinderKmers) obj;
+        for (String roleId : this.roleKmers.keySet()) {
+            if (!other.roleKmers.containsKey(roleId))
+                return false;
+            else if (!this.roleKmers.get(roleId).equals(other.roleKmers.get(roleId)))
+                return false;
+        }
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        return this.roleKmers.hashCode();
+    }
 }

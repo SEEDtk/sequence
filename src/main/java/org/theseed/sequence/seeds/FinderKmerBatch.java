@@ -1,7 +1,9 @@
 package org.theseed.sequence.seeds;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.io.UncheckedIOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -13,11 +15,14 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.apache.commons.lang3.StringUtils;
+import org.theseed.io.TabbedLineReader;
 import org.theseed.p3api.KeyBuffer;
 import org.theseed.p3api.P3CursorConnection;
 import org.theseed.p3api.SolrFilter;
 import org.theseed.proteins.Role;
 import org.theseed.proteins.RoleMap;
+import org.theseed.sequence.ProteinKmers;
 
 import com.github.cliftonlabs.json_simple.JsonObject;
 
@@ -174,6 +179,96 @@ public class FinderKmerBatch implements Iterable<FinderKmers> {
             log.debug("Processed {} sequences. Role #{} {} in progress. {} sequences kept.", this.seqsIn, rolesIn, role, this.seqsKept);
         }
         log.debug("{} sequences read, {} kept, {} invalid, {} roles processed.", this.seqsIn, this.seqsKept, this.seqsInvalid, rolesIn);
+    }
+
+    /**
+     * Create the header for a save file from a role map.
+     * 
+     * @param roleMap       the role definition map containing the roles to include in the header
+     * @param outWriter     PrintWriter to which the header will be written
+     * 
+     * @return a list of the role IDs included in the header, in column order
+     */
+    public static List<String> createHeader(RoleMap roleMap, PrintWriter outWriter) {
+        List<String> roleIds = new ArrayList<>(roleMap.size());
+        outWriter.print("genome_id");
+        for (String roleId : roleMap.keySet()) {
+            roleIds.add(roleId);
+            outWriter.print("\t" + roleId);
+        }
+        outWriter.println();
+        return roleIds;
+    }
+
+    /**
+     * Write the FinderKmer data for this batch to a save file.
+     * 
+     * @param roleIds       list of role IDs to include in the output, in column order
+     * @param outWriter     PrintWriter to which the batch data will be written
+     */
+    public void write(List<String> roleIds,PrintWriter outWriter) {
+        // Write the cached proteins to the temporary file.
+        for (FinderKmers finderKmers : this) {
+            // Write the genome ID and all its protein sequences to the temporary file.
+            String genomeId = finderKmers.getGenomeId();
+            outWriter.print(genomeId);
+            for (String roleId : roleIds) {
+                ProteinKmers proteinKmers = finderKmers.getRoleKmers(roleId);
+                String fullProteinString;
+                if (proteinKmers == null)
+                    fullProteinString = "";
+                else
+                    fullProteinString = proteinKmers.getFullProteinString();
+                outWriter.print("\t" + fullProteinString);
+            }
+            outWriter.println();
+        }
+    }
+
+    /**
+     * Load the role ID headers from a FinderKmer save file.
+     * 
+     * @param inStream      the tabbed-line reader for the save file
+     * 
+     * @return a list of role IDs from the header, in column order
+     * 
+     * @throws IOException if the header is invalid
+     */
+    public static List<String> loadHeader(TabbedLineReader inStream) throws IOException {
+        String[] headers = inStream.getLabels();
+        int idx = inStream.findField("genome_id");
+        if (idx != 0)
+            throw new IOException("Invalid kmer save file header: first column must be genome_id");
+        // Note the role ID list is the full set of labels excepting the first one (genome_id).
+        List<String> retVal = Arrays.stream(headers, 1, headers.length).toList();
+        return retVal;
+    }
+
+    /**
+     * Load this batch from a FinderKmer save file.
+     *
+     * @param roleIds       list of role IDs from the file header
+     * @param num           number of records to load
+     * @param inStream      the tabbed-line reader for the save file
+     *
+     * @throws IOException if there is an error reading the file
+     */
+    public void load(List<String> roleIds, int num, TabbedLineReader inStream) throws IOException {
+        // Read the specified number of records from the input stream.
+        for (int iLine = 0; iLine < num && inStream.hasNext(); iLine++) {
+            var line = inStream.next();
+            String genomeId = line.get(0);
+            FinderKmers finder = this.finderMap.computeIfAbsent(genomeId, x -> new FinderKmers(x));
+            // Loop through all the roles on this line.
+            for (int i = 0; i < roleIds.size(); i++) {
+                String roleId = roleIds.get(i);
+                String protein = line.get(i + 1);
+                if (! StringUtils.isBlank(protein))
+                    finder.addProteinSequence(roleId, protein);
+            }
+            // Add the finder-kmer for this genome to this batch.
+            this.addFinderKmers(finder);
+        }
     }
 
     /**
