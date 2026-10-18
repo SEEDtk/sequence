@@ -31,10 +31,10 @@ import org.theseed.genome.Genome;
 import org.theseed.genome.iterator.GenomeSource;
 import org.theseed.io.TabbedLineReader;
 import org.theseed.locations.Location;
-import org.theseed.p3api.Criterion;
 import org.theseed.p3api.KeyBuffer;
 import org.theseed.p3api.P3Connection;
-import org.theseed.p3api.P3Connection.Table;
+import org.theseed.p3api.P3CursorConnection;
+import org.theseed.p3api.SolrFilter;
 import org.theseed.proteins.Role;
 import org.theseed.proteins.RoleMap;
 import org.theseed.sequence.DnaDataStream;
@@ -474,7 +474,7 @@ public class ProteinFinder {
      */
     public void createDnaFiles(Map<String, Integer> refMap) throws IOException {
         // Loop through the roles. For each role, we build a DNA FASTA file by polling PATRIC.
-        P3Connection p3 = new P3Connection();
+        P3CursorConnection p3 = new P3CursorConnection();
         // Our first task is to get the species name for each reference genome species.
         Map<Integer, String> speciesMap = this.getSpeciesMap(p3, refMap);
         // Note that each role may have multiple aliases.  We need to query each one.  PATRIC stores roles
@@ -492,12 +492,12 @@ public class ProteinFinder {
                     for (Role roleDescriptor : roleMap.getAllById(role)) {
                         String roleName = P3Connection.clean(roleDescriptor.getName());
                         log.info("Searching for {}.  This will take several minutes.", roleDescriptor);
-                        var featureRecords = p3.query(Table.FEATURE, "patric_id,product,na_sequence_md5,genome_id",
-                                Criterion.EQ("product", roleName), Criterion.EQ("annotation", "PATRIC"));
+                        var featureRecords = p3.getRecords("feature", P3CursorConnection.MAX_LIMIT, "patric_id,product,na_sequence_md5,genome_id",
+                                SolrFilter.EQ("product", roleName), SolrFilter.EQ("annotation", "PATRIC"));
                         log.info("{} features found.", featureRecords.size());
                         // We will accumulate a batch of features to process in here.
                         List<JsonObject> featureBatch = new ArrayList<>(BATCH_SIZE);
-                        for (var feature : featureRecords) {
+                        for (JsonObject feature : featureRecords) {
                             // Verify the genome ID and the MD5.
                             String genomeId = KeyBuffer.getString(feature, "genome_id");
                             String md5 = KeyBuffer.getString(feature, "na_sequence_md5");
@@ -542,10 +542,10 @@ public class ProteinFinder {
      *
      * @throws IOException
      */
-    private int writeBatch(P3Connection p3, FastaOutputStream roleFastaStream, List<JsonObject> featureBatch,
+    private int writeBatch(P3CursorConnection p3, FastaOutputStream roleFastaStream, List<JsonObject> featureBatch,
             Map<String, Integer> refMap, Map<Integer, String> speciesMap) throws IOException {
         // First, get the nucleotide sequences.
-        Map<String, String> seqMap = getSequenceMap(p3, featureBatch);
+        Map<String, String> seqMap = this.getSequenceMap(p3, featureBatch);
         // Now loop through the batch, writing features.
         int retVal = 0;
         for (JsonObject feature : featureBatch) {
@@ -569,15 +569,26 @@ public class ProteinFinder {
      * @param featureBatch	feature records to write
      *
      * @return a map from all the needed sequence MD5s to actual sequences
+     * 
+     * @throws IOException if there is an error retrieving the sequences from PATRIC
      */
-    private Map<String, String> getSequenceMap(P3Connection p3, List<JsonObject> featureBatch) {
+    private Map<String, String> getSequenceMap(P3CursorConnection p3, List<JsonObject> featureBatch) throws IOException {
         Set<String> seq_md5s = featureBatch.stream().map(x -> KeyBuffer.getString(x, "na_sequence_md5")).collect(Collectors.toSet());
-        var sequences = p3.getRecords(Table.SEQUENCE, seq_md5s, "md5,sequence");
-        Map<String, String> retVal = sequences.entrySet().stream().collect(Collectors.toMap(x -> x.getKey(),
-                x -> KeyBuffer.getString(x.getValue(), "sequence")));
+        var sequences = p3.getRecords("sequence", P3CursorConnection.MAX_LIMIT, BATCH_SIZE, "md5", seq_md5s, "md5,sequence");
+        Map<String, String> retVal = new HashMap<>(sequences.size() * 3 / 2 + 1);
+        for (JsonObject seqRecord : sequences) {
+            String md5 = KeyBuffer.getString(seqRecord, "md5");
+            String sequence = KeyBuffer.getString(seqRecord, "sequence");
+            retVal.put(md5, sequence);
+        }
         return retVal;
     }
 
+    /**
+     * @return the DNA FASTA file name for the specified role
+     *
+     * @param role	ID of the role in question
+     */
     /**
      * @return the DNA FASTA file name for the specified role
      *
@@ -594,16 +605,18 @@ public class ProteinFinder {
      * @param refMap	reference genome map
      *
      * @return a map from species taxon IDs to species names
+     * 
+     * @throws IOException 
      */
-    private Map<Integer, String> getSpeciesMap(P3Connection p3, Map<String, Integer> refMap) {
+    private Map<Integer, String> getSpeciesMap(P3CursorConnection p3, Map<String, Integer> refMap) throws IOException {
         // Get all the species IDs as strings.
         Set<String> species = refMap.values().stream().map(x -> x.toString()).collect(Collectors.toSet());
         // Create the return hash.
         var retVal = new HashMap<Integer, String>(species.size() * 4 / 3 + 1);
-        var taxRecords = p3.getRecords(Table.TAXONOMY, species, "taxon_id,taxon_name");
-        for (var taxRecordEntry : taxRecords.entrySet()) {
-            int speciesId = Integer.parseInt(taxRecordEntry.getKey());
-            retVal.put(speciesId, KeyBuffer.getString(taxRecordEntry.getValue(), "taxon_name"));
+        var taxRecords = p3.getRecords("taxonomy", P3CursorConnection.MAX_LIMIT, BATCH_SIZE, "taxon_id", species, "taxon_id,taxon_name");
+        for (JsonObject taxRecord : taxRecords) {
+            int speciesId = KeyBuffer.getInt(taxRecord, "taxon_id");
+            retVal.put(speciesId, KeyBuffer.getString(taxRecord, "taxon_name"));
         }
         log.info("{} species names loaded.", retVal.size());
         return retVal;
