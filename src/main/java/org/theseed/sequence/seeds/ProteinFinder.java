@@ -613,7 +613,7 @@ public class ProteinFinder {
         Set<String> species = refMap.values().stream().map(x -> x.toString()).collect(Collectors.toSet());
         // Create the return hash.
         var retVal = new HashMap<Integer, String>(species.size() * 4 / 3 + 1);
-        var taxRecords = p3.getRecords("taxonomy", P3CursorConnection.MAX_LIMIT, BATCH_SIZE, "taxon_id", species, "taxon_id,taxon_name");
+        var taxRecords = p3.getRecords("taxon", P3CursorConnection.MAX_LIMIT, BATCH_SIZE, "taxon_id", species, "taxon_id,taxon_name");
         for (JsonObject taxRecord : taxRecords) {
             int speciesId = KeyBuffer.getInt(taxRecord, "taxon_id");
             retVal.put(speciesId, KeyBuffer.getString(taxRecord, "taxon_name"));
