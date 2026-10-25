@@ -444,7 +444,7 @@ public class FinderKmerBatch implements Iterable<FinderKmers> {
      * @param newBatch      the new batch of genomes to process
      * @param closeness     the closeness threshold for selecting representative genomes
      */
-    private void processBatch(FinderKmerBatch newBatch, double closeness) {
+    public void processBatch(FinderKmerBatch newBatch, double closeness) {
         // Loop through the batch. Any genome not close to an existing representative should be added to the representative set.
         for (FinderKmers genome : newBatch.finderMap.values()) {
             // We need to check this genome against the representatives already in this batch. If the
