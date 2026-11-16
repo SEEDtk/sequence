@@ -2,3 +2,4 @@
 *.ser
 /data/temp/
 /.DS_Store
+deps.txt
